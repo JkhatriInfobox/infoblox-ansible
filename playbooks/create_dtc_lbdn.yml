@@ -19,9 +19,10 @@
             ratio: 2
         ttl: 100
         auth_zones:
-          - demo.com
+          - {'fqdn': 'test.com', 'view': 'default'}
+          - {'fqdn': 'test.com', 'view': 'custom'}
         patterns:
-          - "*.demo.com"
+          - "*.test.com"
         types:
           - A
         comment: Created with Ansible
