@@ -220,6 +220,7 @@ def main():
                 view = zone.get('view')
                 
                 # Validate view for duplicate FQDNs
+                # If an FQDN appears more than once, a 'view' must be specified to distinguish between zones.
                 if fqdn_counter[fqdn] > 1 and not view:
                     module.fail_json(msg=f"Multiple '{fqdn}' zones require view specification.")
                 
