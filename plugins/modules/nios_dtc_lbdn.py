@@ -149,7 +149,7 @@ EXAMPLES = '''
       - {"fqdn": "demo.com", "view": "custom"}   # From custom view
     patterns:
       - "*.example.com"
-      - "*.test.com" 
+      - "*.test.com"
       - "*.demo.com"
     state: present
     provider:
@@ -199,7 +199,7 @@ def main():
         auth_zones = module.params.get('auth_zones')
         if not auth_zones:
             return []
-        
+
         # Create FQDN counter for duplicate detection
         fqdn_counter = {}
         for zone in auth_zones:
@@ -207,7 +207,7 @@ def main():
             if not fqdn:
                 module.fail_json(msg=f"Invalid auth_zone format: {zone}. Must contain FQDN.")
             fqdn_counter[fqdn] = fqdn_counter.get(fqdn, 0) + 1
-        
+
         # Process zones and build reference list
         refs = []
         for zone in auth_zones:
@@ -215,15 +215,15 @@ def main():
             if isinstance(zone, dict):
                 if 'fqdn' not in zone:
                     module.fail_json(msg=f"Invalid auth_zone: {zone}. Missing 'fqdn' key.")
-                
+
                 fqdn = zone['fqdn']
                 view = zone.get('view')
-                
+
                 # Validate view for duplicate FQDNs
                 # If an FQDN appears more than once, a 'view' must be specified to distinguish between zones.
                 if fqdn_counter[fqdn] > 1 and not view:
                     module.fail_json(msg=f"Multiple '{fqdn}' zones require view specification.")
-                
+
                 # Build query and display name
                 query = {'fqdn': fqdn}
                 if view:
@@ -231,26 +231,26 @@ def main():
                     display = f"{fqdn}:{view}"
                 else:
                     display = fqdn
-                    
+
             else:  # String format
                 fqdn = zone
                 display = fqdn
                 query = {'fqdn': fqdn}
-                
+
                 if fqdn_counter[fqdn] > 1:
                     module.fail_json(msg=f"Multiple '{fqdn}' zones require view specification.")
-            
+
             try:
                 # Get zone object
                 zone_obj = wapi.get_object('zone_auth', query)
                 if not zone_obj:
                     module.fail_json(msg=f"Zone '{display}' not found.")
-                
+
                 refs.append(zone_obj[0]['_ref'])
-                
+
             except Exception as e:
                 module.fail_json(msg=f"Error processing zone '{display}': {e}")
-        
+
         return refs
 
     def pools_transform(module):

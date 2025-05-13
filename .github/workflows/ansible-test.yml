@@ -143,8 +143,29 @@ jobs:
       - name: Setup Integration test Pre-requisites
         run: |
              sudo apt-get update
-             sudo apt install -y libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 python3-gi python-gi-dev
-             pip install --no-build-isolation -r /home/runner/.ansible/collections/ansible_collections/infoblox/nios_modules/tests/requirements.txt
+             # Install all required system dependencies for PyGObject and GTK
+             sudo apt-get install -y libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev \
+               gir1.2-gtk-3.0 python3-gi python3-gi-cairo python3-cairo python3-cairo-dev \
+               gobject-introspection libglib2.0-dev gir1.2-glib-2.0
+             
+             # Try to update pip before installing requirements
+             pip install --upgrade pip setuptools wheel
+             
+             # Use system packages for GTK/GObject dependencies instead of building from source
+             # Create a directory for the custom pip.conf file
+             mkdir -p ~/.pip
+             echo "[global]" > ~/.pip/pip.conf
+             echo "break-system-packages = true" >> ~/.pip/pip.conf
+             
+             # Skip installing PyGObject from pip, as we're using the system packages
+             if [ -f /home/runner/.ansible/collections/ansible_collections/infoblox/nios_modules/tests/requirements.txt ]; then
+                 grep -v -E "PyGObject|pycairo|pygobject|gobject|gtk" \
+                   /home/runner/.ansible/collections/ansible_collections/infoblox/nios_modules/tests/requirements.txt > /tmp/filtered_requirements.txt || true
+                 if [ -s /tmp/filtered_requirements.txt ]; then
+                     cat /tmp/filtered_requirements.txt
+                     pip install -v -r /tmp/filtered_requirements.txt
+                 fi
+             fi
 
       # Run the integration tests
       - name: Run integration test
@@ -179,6 +200,7 @@ jobs:
       matrix:
         ansible-version: [stable-2.16, stable-2.17, stable-2.18, devel]
 
+        
     steps:
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
