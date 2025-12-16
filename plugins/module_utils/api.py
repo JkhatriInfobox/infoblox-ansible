@@ -953,7 +953,7 @@ class WapiModule(WapiBase):
             # resolves issue where multiple txt_records with same name and different text
             test_obj_filter = obj_filter
             try:
-                text_obj = obj_filter(['text'])
+                text_obj = obj_filter['text']
                 if text_obj.startswith("{"):
                     try:
                         text_obj = json.loads(text_obj)

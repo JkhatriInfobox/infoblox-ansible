@@ -148,7 +148,10 @@ jobs:
       - name: Setup Integration test Pre-requisites
         run: |
              sudo apt-get update
-             sudo apt install libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0
+             sudo apt install -y libgirepository1.0-dev gcc libcairo2-dev pkg-config python3-dev gir1.2-gtk-3.0 gobject-introspection
+             pip install --upgrade pip setuptools wheel
+             pip install pycairo
+             pip install PyGObject
              pip install -r /home/runner/.ansible/collections/ansible_collections/infoblox/nios_modules/tests/requirements.txt
 
       # Run the integration tests
