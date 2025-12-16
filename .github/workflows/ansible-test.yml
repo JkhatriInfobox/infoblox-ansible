@@ -3,6 +3,7 @@ on:
 # Run CI against all pushes (direct commits) and Pull Requests
   push:
   pull_request:
+  workflow_dispatch:
   schedule:
     - cron: '0 2 * * 1'
 
