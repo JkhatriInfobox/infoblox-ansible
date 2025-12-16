@@ -36,7 +36,8 @@ from functools import partial
 from ansible.module_utils._text import to_native
 from ansible.module_utils._text import to_text
 from ansible.module_utils.basic import env_fallback
-from ansible.module_utils.common.validation import check_type_dict, safe_eval
+from ansible.module_utils.common.validation import check_type_dict
+import ast
 
 try:
     from infoblox_client.connector import Connector
@@ -450,7 +451,7 @@ class WapiModule(WapiBase):
                     text_obj = json.loads(text_obj)
                     txt = text_obj['new_text']
                 except Exception:
-                    (result, exc) = safe_eval(text_obj, dict(), include_exceptions=True)
+                    (result, exc) = ast.literal_eval(text_obj, dict(), include_exceptions=True)
                     if exc is not None:
                         raise TypeError('unable to evaluate string as dictionary')
                     txt = result['new_text']
@@ -895,11 +896,12 @@ class WapiModule(WapiBase):
                             txt = text_obj['old_text']
                             old_text_exists = True
                         except Exception:
-                            (result, exc) = safe_eval(text_obj, dict(), include_exceptions=True)
-                            if exc is not None:
+                            try:
+                                result = ast.literal_eval(text_obj)
+                                txt = result['old_text']
+                                old_text_exists = True
+                            except (ValueError, SyntaxError):
                                 raise TypeError('unable to evaluate string as dictionary')
-                            txt = result['old_text']
-                            old_text_exists = True
                     else:
                         txt = text_obj
                 except TypeError:
@@ -958,11 +960,12 @@ class WapiModule(WapiBase):
                         txt = text_obj['old_text']
                         old_text_exists = True
                     except Exception:
-                        (result, exc) = safe_eval(text_obj, dict(), include_exceptions=True)
-                        if exc is not None:
+                        try:
+                            result = ast.literal_eval(text_obj)
+                            txt = result['old_text']
+                            old_text_exists = True
+                        except (ValueError, SyntaxError):
                             raise TypeError('unable to evaluate string as dictionary')
-                        txt = result['old_text']
-                        old_text_exists = True
                 else:
                     txt = text_obj
             except TypeError:
