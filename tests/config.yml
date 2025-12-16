@@ -1,0 +1,10 @@
+---
+# Ansible-test configuration file for the collection.
+# This file specifies Python version requirements for modules/module_utils.
+# Support for this feature was first added in ansible-core 2.12.
+
+modules:
+  # Python versions supported by modules/module_utils.
+  # Using PEP 440 specifier set to indicate Python 3.10 or higher is required.
+  # This aligns with Ansible Core 2.16+ requirements.
+  python_requires: ">=3.10"
