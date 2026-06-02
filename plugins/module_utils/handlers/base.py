@@ -41,7 +41,7 @@ class BaseObjectHandler(object):
         Returns:
             tuple: (current_object, ref)
         """
-        from ..api import flatten_extattrs
+        from ..transforms import flatten_extattrs
 
         if ib_obj_ref:
             if len(ib_obj_ref) > 1:

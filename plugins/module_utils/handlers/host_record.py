@@ -31,8 +31,7 @@ class HostRecordHandler(BaseObjectHandler):
         # Validate use_for_ea_inheritance
         if 'ipv4addrs' in proposed_object:
             if sum(addr.get('use_for_ea_inheritance', False) for addr in proposed_object['ipv4addrs']) > 1:
-                from ..api import AnsibleError
-                raise AnsibleError('Only one address allowed to be used for extensible attributes inheritance')
+                raise Exception('Only one address allowed to be used for extensible attributes inheritance')
 
         # Idempotency: remove add/remove flags if IP already exists/doesn't exist
         self._handle_add_remove_idempotency(proposed_object, current_object)

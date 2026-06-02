@@ -37,7 +37,7 @@ def compare_objects(current_object, proposed_object, ib_obj_type=None):
 
 def _compare_list(key, current_item, proposed_item, ib_obj_type):
     """Compare list fields. Returns True if equal."""
-    from .api import NIOS_HOST_RECORD, NIOS_DTC_LBDN
+    from .connector import NIOS_HOST_RECORD, NIOS_DTC_LBDN
 
     if key == 'aliases':
         if set(current_item) != set(proposed_item):
