@@ -3,38 +3,18 @@ __metaclass__ = type
 
 from .base import BaseObjectHandler
 
-
-def get_handler(ib_obj_type):
-    """Get the appropriate handler for the given NIOS object type.
-
-    Returns BaseObjectHandler for types without custom handling.
-    """
-    from ..connector import (
-        NIOS_HOST_RECORD, NIOS_A_RECORD, NIOS_AAAA_RECORD,
-        NIOS_TXT_RECORD, NIOS_MEMBER, NIOS_ZONE, NIOS_RANGE,
-        NIOS_IPV4_NETWORK, NIOS_IPV6_NETWORK,
-        NIOS_IPV4_NETWORK_CONTAINER, NIOS_IPV6_NETWORK_CONTAINER,
-        NIOS_IPV4_FIXED_ADDRESS, NIOS_IPV6_FIXED_ADDRESS,
-        NIOS_VLAN, NIOS_EXTENSIBLE_ATTRIBUTE, NIOS_PTR_RECORD,
-        NIOS_SRV_RECORD, NIOS_NAPTR_RECORD, NIOS_CNAME_RECORD,
-        NIOS_NETWORK_VIEW, NIOS_DNS_VIEW, NIOS_DTC_MONITOR_TCP,
-        NIOS_DTC_LBDN, NIOS_ADMINUSER
-    )
-
-    handler = _HANDLER_REGISTRY.get(ib_obj_type)
-    if handler is None:
-        handler = BaseObjectHandler()
-    return handler
-
-
-# Lazy-initialized registry to avoid circular imports
+# Lazy-initialized registry mapping NIOS object types to handler instances.
 _HANDLER_REGISTRY = {}
 _registry_initialized = False
 
 
 def _init_registry():
-    """Initialize the handler registry. Called once on first use."""
-    global _registry_initialized, _HANDLER_REGISTRY
+    """Initialize the handler registry once on first use.
+
+    Lazy initialization avoids circular imports between the handlers,
+    the connector constants, and api.py.
+    """
+    global _registry_initialized
     if _registry_initialized:
         return
 
@@ -56,9 +36,7 @@ def _init_registry():
         NIOS_IPV4_NETWORK_CONTAINER, NIOS_IPV6_NETWORK_CONTAINER,
         NIOS_IPV4_FIXED_ADDRESS, NIOS_IPV6_FIXED_ADDRESS,
         NIOS_VLAN, NIOS_EXTENSIBLE_ATTRIBUTE, NIOS_PTR_RECORD,
-        NIOS_SRV_RECORD, NIOS_NAPTR_RECORD, NIOS_CNAME_RECORD,
-        NIOS_NETWORK_VIEW, NIOS_DNS_VIEW, NIOS_DTC_MONITOR_TCP,
-        NIOS_DTC_LBDN, NIOS_ADMINUSER
+        NIOS_SRV_RECORD, NIOS_NAPTR_RECORD,
     )
 
     _HANDLER_REGISTRY.update({
@@ -85,12 +63,11 @@ def _init_registry():
     _registry_initialized = True
 
 
-# Patch get_handler to init registry on first call
-_original_get_handler = get_handler
+def get_handler(ib_obj_type):
+    """Get the handler for the given NIOS object type.
 
-
-def get_handler(ib_obj_type):  # noqa: F811
-    """Get the appropriate handler for the given NIOS object type."""
+    Returns a BaseObjectHandler for any type without a custom handler.
+    """
     _init_registry()
     handler = _HANDLER_REGISTRY.get(ib_obj_type)
     if handler is None:

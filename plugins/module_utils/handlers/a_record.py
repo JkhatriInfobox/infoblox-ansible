@@ -53,13 +53,13 @@ class ARecordHandler(BaseObjectHandler):
         except Exception:
             raise Exception("object with dns_view: %s not found" % proposed_object.get('view'))
 
-    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module):
+    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module, ib_obj_type):
         """Pop 'view' before update (not supported for A records)."""
         proposed_object = self.on_update(proposed_object, ib_spec)
         proposed_object.pop('view', None)
         return ref, proposed_object
 
-    def get_object_ref(self, wapi, module, obj_filter, ib_spec):
+    def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Custom lookup handling multiple A records with same name."""
         from ansible.module_utils.common.validation import check_type_dict
 

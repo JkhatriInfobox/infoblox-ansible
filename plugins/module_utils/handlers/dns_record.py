@@ -11,7 +11,7 @@ class DnsRecordHandler(BaseObjectHandler):
     These records all need 'view' removed before update.
     """
 
-    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module):
+    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module, ib_obj_type):
         """Remove 'view' before update (not supported for these record types)."""
         proposed_object = self.on_update(proposed_object, ib_spec)
         proposed_object.pop('view', None)

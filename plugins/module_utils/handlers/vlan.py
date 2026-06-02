@@ -19,8 +19,6 @@ class VlanHandler(BaseObjectHandler):
 
     def resolve_current(self, ib_obj_ref, obj_filter, proposed_object=None):
         """Resolve VLAN current object with parent _ref normalization."""
-        from ..transforms import flatten_extattrs
-
         current_object, ref = super(VlanHandler, self).resolve_current(
             ib_obj_ref, obj_filter, proposed_object)
 

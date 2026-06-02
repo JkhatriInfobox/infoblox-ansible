@@ -10,7 +10,7 @@ class ZoneHandler(BaseObjectHandler):
     Handles restart_if_needed non-searchable field and zone_format non-updatable field.
     """
 
-    def get_object_ref(self, wapi, module, obj_filter, ib_spec):
+    def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Custom lookup that removes restart_if_needed from search fields."""
         update = False
         new_name = None
@@ -30,7 +30,7 @@ class ZoneHandler(BaseObjectHandler):
 
         return ib_obj, update, new_name
 
-    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module):
+    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module, ib_obj_type):
         """Remove zone_format before update (not supported)."""
         proposed_object = self.on_update(proposed_object, ib_spec)
         proposed_object.pop('zone_format', None)

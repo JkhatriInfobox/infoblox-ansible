@@ -26,7 +26,7 @@ class RangeHandler(BaseObjectHandler):
 
         return proposed_object
 
-    def get_object_ref(self, wapi, module, obj_filter, ib_spec):
+    def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Custom lookup that removes new_start_addr/new_end_addr from search."""
         update = False
         new_name = None

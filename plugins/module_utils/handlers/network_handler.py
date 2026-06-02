@@ -27,7 +27,7 @@ class NetworkHandler(BaseObjectHandler):
 
         return proposed_object
 
-    def get_object_ref(self, wapi, module, obj_filter, ib_spec):
+    def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Custom lookup that removes template and container-invalid fields."""
         from ..connector import NIOS_IPV4_NETWORK_CONTAINER, NIOS_IPV6_NETWORK_CONTAINER
 
@@ -38,9 +38,6 @@ class NetworkHandler(BaseObjectHandler):
         temp_template = ib_spec.get('template')
         if 'template' in ib_spec:
             del ib_spec['template']
-
-        # Determine the actual object type from ib_spec context
-        ib_obj_type = self._get_obj_type(obj_filter, ib_spec)
 
         if ib_obj_type in (NIOS_IPV4_NETWORK_CONTAINER, NIOS_IPV6_NETWORK_CONTAINER):
             # Remove fields not valid for containers
@@ -56,23 +53,14 @@ class NetworkHandler(BaseObjectHandler):
 
         return ib_obj, update, new_name
 
-    def _get_obj_type(self, obj_filter, ib_spec):
-        """Determine the network object type. Override if needed."""
-        # This will be set by the caller/module
-        return getattr(self, '_current_obj_type', 'network')
-
-    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module):
+    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module, ib_obj_type):
         """Handle network_view removal on update."""
-        from ..connector import (
-            NIOS_IPV4_FIXED_ADDRESS, NIOS_IPV6_FIXED_ADDRESS, NIOS_RANGE,
-            NIOS_IPV4_NETWORK_CONTAINER, NIOS_IPV6_NETWORK_CONTAINER
-        )
+        from ..connector import NIOS_IPV4_NETWORK_CONTAINER, NIOS_IPV6_NETWORK_CONTAINER
 
         proposed_object = self.on_update(proposed_object, ib_spec)
 
         if 'network_view' in proposed_object:
             proposed_object.pop('network_view')
-            ib_obj_type = getattr(self, '_current_obj_type', None)
             if ib_obj_type in (NIOS_IPV4_NETWORK_CONTAINER, NIOS_IPV6_NETWORK_CONTAINER):
                 proposed_object.pop('network', None)
 

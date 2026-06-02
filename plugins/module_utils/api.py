@@ -151,7 +151,8 @@ class WapiModule(WapiBase):
         # Build object filter and find existing object
         obj_filter = handler.build_object_filter(self.module, ib_spec)
         try:
-            ib_obj_ref, update, new_name = handler.get_object_ref(self, self.module, obj_filter, ib_spec)
+            ib_obj_ref, update, new_name = handler.get_object_ref(
+                self, self.module, ib_obj_type, obj_filter, ib_spec)
         except Exception as exc:
             self.module.fail_json(msg=to_native(exc))
             return result
@@ -163,7 +164,8 @@ class WapiModule(WapiBase):
             if self.module.params.get('new_end_addr'):
                 obj_filter['end_addr'] = self.module.params.get('new_end_addr')
             try:
-                ib_obj_ref, update, new_name = handler.get_object_ref(self, self.module, obj_filter, ib_spec)
+                ib_obj_ref, update, new_name = handler.get_object_ref(
+                    self, self.module, ib_obj_type, obj_filter, ib_spec)
             except Exception as exc:
                 self.module.fail_json(msg=to_native(exc))
                 return result
@@ -222,7 +224,7 @@ class WapiModule(WapiBase):
                                                  current_object, proposed_object)
 
                 update_result = handler.pre_update(self, ref, proposed_object, current_object,
-                                                   ib_spec, self.module)
+                                                   ib_spec, self.module, ib_obj_type)
                 if update_result is None:
                     # Handler signaled skip (e.g., add/remove with flag=False)
                     pass
@@ -383,4 +385,4 @@ class WapiModule(WapiBase):
     def get_object_ref(self, module, ib_obj_type, obj_filter, ib_spec):
         """Legacy: delegate to the appropriate handler's get_object_ref."""
         handler = get_handler(ib_obj_type)
-        return handler.get_object_ref(self, module, obj_filter, ib_spec)
+        return handler.get_object_ref(self, module, ib_obj_type, obj_filter, ib_spec)

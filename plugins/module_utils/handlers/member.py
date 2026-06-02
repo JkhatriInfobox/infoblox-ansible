@@ -19,7 +19,7 @@ class MemberHandler(BaseObjectHandler):
             proposed_object.pop("create_token", None)
         return proposed_object
 
-    def get_object_ref(self, wapi, module, obj_filter, ib_spec):
+    def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Custom lookup for member objects with host_name rename support."""
         from ansible.module_utils.common.validation import check_type_dict
 
@@ -63,7 +63,7 @@ class MemberHandler(BaseObjectHandler):
 
         return ib_obj, update, new_name
 
-    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module):
+    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module, ib_obj_type):
         """Handle create_token function call and normal member updates."""
         # If create_token is True, call the function instead of updating
         if proposed_object.get("create_token") is True:

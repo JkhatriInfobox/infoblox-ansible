@@ -21,7 +21,7 @@ class TxtRecordHandler(BaseObjectHandler):
                 proposed_object['text'] = txt
         return proposed_object
 
-    def get_object_ref(self, wapi, module, obj_filter, ib_spec):
+    def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Custom lookup handling old_text for TXT records."""
         update = False
         new_name = None

@@ -315,7 +315,7 @@ from ansible.module_utils.basic import AnsibleModule
 from ..module_utils.api import WapiModule
 from ..module_utils.api import NIOS_IPV4_NETWORK, NIOS_IPV6_NETWORK
 from ..module_utils.api import NIOS_IPV4_NETWORK_CONTAINER, NIOS_IPV6_NETWORK_CONTAINER
-from ..module_utils.api import normalize_ib_spec
+from ..module_utils.module_helpers import build_argument_spec
 from ..module_utils.network import validate_ip_address, validate_ip_v6_address
 
 
@@ -441,14 +441,7 @@ def main():
         logic_filter_rules=dict(type='list', elements='dict', default=[])
     )
 
-    argument_spec = dict(
-        provider=dict(required=True),
-        state=dict(default='present', choices=['present', 'absent'])
-    )
-
-    argument_spec.update(normalize_ib_spec(ib_spec))
-    argument_spec.update(WapiModule.provider_spec)
-
+    argument_spec = build_argument_spec(ib_spec)
     module = AnsibleModule(argument_spec=argument_spec,
                            supports_check_mode=True)
 

@@ -162,7 +162,7 @@ RETURN = ''' # '''
 
 from ..module_utils.api import NIOS_DTC_POOL
 from ..module_utils.api import WapiModule
-from ..module_utils.api import normalize_ib_spec
+from ..module_utils.module_helpers import build_argument_spec, resolve_ref, topology_ref_transform
 from ansible.module_utils.basic import AnsibleModule
 
 
@@ -174,37 +174,22 @@ def main():
         server_list = list()
         if module.params['servers']:
             for server in module.params['servers']:
-                server_obj = wapi.get_object('dtc:server',
-                                             {'name': server['server']})
-                if server_obj:
-                    server_list.append({'server': server_obj[0]['_ref'],
-                                        'ratio': server['ratio']})
-                else:
-                    module.fail_json(msg='Server %s cannot be found.' % server)
+                server_ref = resolve_ref(wapi, module, 'dtc:server', {'name': server['server']},
+                                         label='Server %s' % server)
+                server_list.append({'server': server_ref, 'ratio': server['ratio']})
         return server_list
 
     def monitors_transform(module):
         monitor_list = list()
         if module.params['monitors']:
             for monitor in module.params['monitors']:
-                monitor_obj = wapi.get_object('dtc:monitor:' + monitor['type'],
-                                              {'name': monitor['name']})
-                if monitor_obj:
-                    monitor_list.append(monitor_obj[0]['_ref'])
-                else:
-                    module.fail_json(
-                        msg='monitor %s cannot be found.' % monitor)
+                monitor_ref = resolve_ref(wapi, module, 'dtc:monitor:' + monitor['type'],
+                                          {'name': monitor['name']}, label='monitor %s' % monitor)
+                monitor_list.append(monitor_ref)
         return monitor_list
 
     def topology_transform(module):
-        topology = module.params['lb_preferred_topology']
-        if topology:
-            topo_obj = wapi.get_object('dtc:topology', {'name': topology})
-            if topo_obj:
-                return topo_obj[0]['_ref']
-            else:
-                module.fail_json(
-                    msg='topology %s cannot be found.' % topology)
+        return topology_ref_transform(wapi, module, 'lb_preferred_topology')
 
     servers_spec = dict(
         server=dict(required=True),
@@ -235,14 +220,7 @@ def main():
         comment=dict(),
     )
 
-    argument_spec = dict(
-        provider=dict(required=True),
-        state=dict(default='present', choices=['present', 'absent'])
-    )
-
-    argument_spec.update(normalize_ib_spec(ib_spec))
-    argument_spec.update(WapiModule.provider_spec)
-
+    argument_spec = build_argument_spec(ib_spec)
     module = AnsibleModule(argument_spec=argument_spec,
                            supports_check_mode=True)
 

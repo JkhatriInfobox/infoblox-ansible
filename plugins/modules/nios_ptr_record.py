@@ -113,7 +113,7 @@ RETURN = ''' # '''
 from ansible.module_utils.basic import AnsibleModule
 from ..module_utils.api import WapiModule
 from ..module_utils.api import NIOS_PTR_RECORD
-from ..module_utils.api import normalize_ib_spec
+from ..module_utils.module_helpers import build_argument_spec
 
 
 def main():
@@ -131,14 +131,7 @@ def main():
         comment=dict(),
     )
 
-    argument_spec = dict(
-        provider=dict(required=True),
-        state=dict(default='present', choices=['present', 'absent'])
-    )
-
-    argument_spec.update(normalize_ib_spec(ib_spec))
-    argument_spec.update(WapiModule.provider_spec)
-
+    argument_spec = build_argument_spec(ib_spec)
     mutually_exclusive = [('ipv4addr', 'ipv6addr')]
     required_one_of = [
         ['ipv4addr', 'ipv6addr']

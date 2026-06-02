@@ -10,7 +10,7 @@ class FixedAddressHandler(BaseObjectHandler):
     Handles MAC/DUID-based lookups and network_view preservation on update.
     """
 
-    def get_object_ref(self, wapi, module, obj_filter, ib_spec):
+    def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Lookup fixed address by MAC or DUID."""
         from ..connector import NIOS_IPV4_FIXED_ADDRESS, NIOS_IPV6_FIXED_ADDRESS
 
@@ -32,7 +32,7 @@ class FixedAddressHandler(BaseObjectHandler):
         ib_obj = wapi.get_object(ib_obj_type, test_obj_filter, return_fields=return_fields)
         return ib_obj, update, new_name
 
-    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module):
+    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module, ib_obj_type):
         """Keep network_view for fixed addresses (unlike other types)."""
         proposed_object = self.on_update(proposed_object, ib_spec)
         return ref, proposed_object

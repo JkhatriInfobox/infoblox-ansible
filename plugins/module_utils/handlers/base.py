@@ -1,8 +1,6 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
-import copy
-
 
 class BaseObjectHandler(object):
     """Default CRUD handler for NIOS object types.
@@ -18,21 +16,18 @@ class BaseObjectHandler(object):
         """
         return dict([(k, module.params[k]) for k, v in ib_spec.items() if v.get('ib_req')])
 
-    def get_object_ref(self, wapi, module, obj_filter, ib_spec):
+    def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Find existing object reference.
 
         Returns:
             tuple: (ib_obj_ref_list, update_flag, new_name)
         """
-        from ..api import check_type_dict
-        from ansible.module_utils.common.validation import check_type_dict  # noqa: F811
-
         update = False
         new_name = None
         return_fields = list(ib_spec.keys())
         test_obj_filter = obj_filter.copy()
 
-        ib_obj = wapi.get_object(self.ib_obj_type, test_obj_filter, return_fields=return_fields)
+        ib_obj = wapi.get_object(ib_obj_type, test_obj_filter, return_fields=return_fields)
         return ib_obj, update, new_name
 
     def resolve_current(self, ib_obj_ref, obj_filter, proposed_object=None):
@@ -89,9 +84,8 @@ class BaseObjectHandler(object):
         """Hook before create. Return the (possibly modified) proposed_object."""
         return proposed_object
 
-    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module):
+    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module, ib_obj_type):
         """Hook before update. Return (ref, proposed_object) or None to skip update."""
-        from ..api import WapiModule
         proposed_object = self.on_update(proposed_object, ib_spec)
         return ref, proposed_object
 

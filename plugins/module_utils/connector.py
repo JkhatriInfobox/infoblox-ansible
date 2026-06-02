@@ -2,12 +2,10 @@ from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
 import os
-from functools import partial
 from ansible.module_utils.basic import env_fallback
 
 try:
     from infoblox_client.connector import Connector
-    from infoblox_client.exceptions import InfobloxException
     HAS_INFOBLOX_CLIENT = True
 except ImportError:
     HAS_INFOBLOX_CLIENT = False

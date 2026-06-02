@@ -186,7 +186,7 @@ RETURN = ''' # '''
 
 from ..module_utils.api import NIOS_DTC_LBDN
 from ..module_utils.api import WapiModule
-from ..module_utils.api import normalize_ib_spec
+from ..module_utils.module_helpers import build_argument_spec, resolve_ref, topology_ref_transform
 from ansible.module_utils.basic import AnsibleModule
 
 
@@ -257,26 +257,15 @@ def main():
         pool_list = list()
         if module.params['pools']:
             for pool in module.params['pools']:
-                pool_obj = wapi.get_object('dtc:pool',
-                                           {'name': pool['pool']})
                 if 'ratio' not in pool:
                     pool['ratio'] = 1
-                if pool_obj:
-                    pool_list.append({'pool': pool_obj[0]['_ref'],
-                                      'ratio': pool['ratio']})
-                else:
-                    module.fail_json(msg='pool %s cannot be found.' % pool)
+                pool_ref = resolve_ref(wapi, module, 'dtc:pool', {'name': pool['pool']},
+                                       label='pool %s' % pool)
+                pool_list.append({'pool': pool_ref, 'ratio': pool['ratio']})
         return pool_list
 
     def topology_transform(module):
-        topology = module.params['topology']
-        if topology:
-            topo_obj = wapi.get_object('dtc:topology', {'name': topology})
-            if topo_obj:
-                return topo_obj[0]['_ref']
-            else:
-                module.fail_json(
-                    msg='topology %s cannot be found.' % topology)
+        return topology_ref_transform(wapi, module, 'topology')
 
     auth_zones_spec = dict()
 
@@ -304,14 +293,7 @@ def main():
         comment=dict(),
     )
 
-    argument_spec = dict(
-        provider=dict(required=True),
-        state=dict(default='present', choices=['present', 'absent'])
-    )
-
-    argument_spec.update(normalize_ib_spec(ib_spec))
-    argument_spec.update(WapiModule.provider_spec)
-
+    argument_spec = build_argument_spec(ib_spec)
     module = AnsibleModule(argument_spec=argument_spec,
                            supports_check_mode=True)
 

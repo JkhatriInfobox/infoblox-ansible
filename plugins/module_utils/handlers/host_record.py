@@ -3,7 +3,6 @@ __metaclass__ = type
 
 import copy
 from .base import BaseObjectHandler
-from ..transforms import normalize_extattrs
 
 
 class HostRecordHandler(BaseObjectHandler):
@@ -82,7 +81,7 @@ class HostRecordHandler(BaseObjectHandler):
 
         return proposed_object
 
-    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module):
+    def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module, ib_obj_type):
         """Handle host record update with add/remove IP and use_for_ea_inheritance."""
         run_update = True
         proposed_object = self.on_update(proposed_object, ib_spec)
@@ -144,7 +143,7 @@ class HostRecordHandler(BaseObjectHandler):
                 del proposed_object['ipv4addrs'][0]['remove']
         return update, proposed_object
 
-    def get_object_ref(self, wapi, module, obj_filter, ib_spec):
+    def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Custom object ref lookup for host records."""
         from ansible.module_utils.common.validation import check_type_dict
 
@@ -152,8 +151,8 @@ class HostRecordHandler(BaseObjectHandler):
         new_name = None
 
         if 'name' not in obj_filter:
-            return wapi.get_object(wapi.ib_obj_type if hasattr(wapi, 'ib_obj_type') else 'record:host',
-                                   obj_filter.copy(), return_fields=list(ib_spec.keys())), update, new_name
+            return wapi.get_object('record:host', obj_filter.copy(),
+                                   return_fields=list(ib_spec.keys())), update, new_name
 
         # Check for old_name/new_name rename
         try:
