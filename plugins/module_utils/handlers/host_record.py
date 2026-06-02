@@ -1,6 +1,8 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
+from ansible.module_utils.common.validation import check_type_dict
+
 import copy
 from .base import BaseObjectHandler
 
@@ -59,7 +61,6 @@ class HostRecordHandler(BaseObjectHandler):
 
     def _check_for_new_ipv4addr(self, proposed_object):
         """Check if new_ipv4addr parameter is passed for static IP update."""
-        from ansible.module_utils.common.validation import check_type_dict
 
         if 'ipv4addr' in proposed_object:
             if isinstance(proposed_object['ipv4addr'], str) and 'new_ipv4addr' in proposed_object['ipv4addr']:
@@ -70,7 +71,6 @@ class HostRecordHandler(BaseObjectHandler):
 
     def check_if_nios_next_ip_exists(self, wapi, proposed_object):
         """Format ipv4addrs for next_available_ip allocation."""
-        from ansible.module_utils.common.validation import check_type_dict
         from ..connector import NIOS_NEXT_AVAILABLE_IP
 
         if 'ipv4addrs' in proposed_object:
@@ -145,7 +145,6 @@ class HostRecordHandler(BaseObjectHandler):
 
     def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Custom object ref lookup for host records."""
-        from ansible.module_utils.common.validation import check_type_dict
 
         update = False
         new_name = None

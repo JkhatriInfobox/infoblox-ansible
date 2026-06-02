@@ -1,6 +1,8 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
+from ansible.module_utils.common.validation import check_type_dict
+
 from .base import BaseObjectHandler
 from ..transforms import parse_txt_for_lookup, parse_txt_field
 
@@ -30,7 +32,6 @@ class TxtRecordHandler(BaseObjectHandler):
 
         if 'name' in obj_filter:
             # Check for rename
-            from ansible.module_utils.common.validation import check_type_dict
             try:
                 name_obj = check_type_dict(obj_filter['name'])
                 old_name = name_obj['old_name'].lower()

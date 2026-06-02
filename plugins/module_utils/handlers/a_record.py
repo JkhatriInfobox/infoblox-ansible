@@ -1,6 +1,8 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
+from ansible.module_utils.common.validation import check_type_dict
+
 from .base import BaseObjectHandler
 
 
@@ -21,7 +23,6 @@ class ARecordHandler(BaseObjectHandler):
 
     def post_prepare(self, proposed_object, current_object, ib_obj_type):
         """Handle new_ipv4addr field."""
-        from ansible.module_utils.common.validation import check_type_dict
 
         if 'ipv4addr' in proposed_object:
             if isinstance(proposed_object['ipv4addr'], str) and 'new_ipv4addr' in proposed_object['ipv4addr']:
@@ -32,7 +33,6 @@ class ARecordHandler(BaseObjectHandler):
 
     def check_if_nios_next_ip_exists(self, wapi, proposed_object):
         """Format ipv4addr for next_available_ip allocation."""
-        from ansible.module_utils.common.validation import check_type_dict
         from ..connector import NIOS_NEXT_AVAILABLE_IP
 
         if 'ipv4addr' in proposed_object:
@@ -61,7 +61,6 @@ class ARecordHandler(BaseObjectHandler):
 
     def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Custom lookup handling multiple A records with same name."""
-        from ansible.module_utils.common.validation import check_type_dict
 
         update = False
         new_name = None

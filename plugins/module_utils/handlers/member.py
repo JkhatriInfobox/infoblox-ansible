@@ -1,6 +1,8 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
+from ansible.module_utils.common.validation import check_type_dict
+
 from .base import BaseObjectHandler
 from ..transforms import member_normalize
 
@@ -21,7 +23,6 @@ class MemberHandler(BaseObjectHandler):
 
     def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Custom lookup for member objects with host_name rename support."""
-        from ansible.module_utils.common.validation import check_type_dict
 
         update = False
         new_name = None

@@ -190,10 +190,6 @@ class WapiModule(WapiBase):
             self.module.fail_json(msg=to_native(exc))
             return result
 
-        # Normalize extattrs for comparison, then re-normalize for the API call
-        if 'extattrs' in proposed_object:
-            proposed_object['extattrs'] = normalize_extattrs(proposed_object['extattrs'])
-
         # Check for nios_next_ip (host record and a_record handlers expose this)
         if hasattr(handler, 'check_if_nios_next_ip_exists'):
             try:
@@ -204,6 +200,14 @@ class WapiModule(WapiBase):
 
         # Compare current vs proposed
         modified = not handler.compare(current_object, proposed_object, ib_obj_type)
+
+        # Normalize extattrs for the API call. This MUST happen after the
+        # comparison above: current_object's extattrs are flattened
+        # ({'Site': 'x'}) while normalize converts proposed to the WAPI
+        # struct form ({'Site': {'value': 'x'}}). Normalizing before the
+        # compare would make every run report 'changed'.
+        if 'extattrs' in proposed_object:
+            proposed_object['extattrs'] = normalize_extattrs(proposed_object['extattrs'])
 
         if state == 'present':
             if ref is None:

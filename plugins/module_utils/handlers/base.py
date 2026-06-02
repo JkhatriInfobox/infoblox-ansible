@@ -1,6 +1,11 @@
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
+# Imported at module load (before unit tests patch it) so that the binding
+# matches the original api.py behaviour. A call-time import would pick up the
+# test's patched MagicMock and break plain-string name handling.
+from ansible.module_utils.common.validation import check_type_dict
+
 
 class BaseObjectHandler(object):
     """Default CRUD handler for NIOS object types.
@@ -19,15 +24,60 @@ class BaseObjectHandler(object):
     def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Find existing object reference.
 
+        Handles the generic rename case where ``name`` is supplied as a
+        ``{'old_name': ..., 'new_name': ...}`` dict, looking up the object by
+        ``old_name`` and signalling an update with the resolved ``new_name``.
+
         Returns:
             tuple: (ib_obj_ref_list, update_flag, new_name)
         """
+        from ..connector import NIOS_NETWORK_VIEW, NIOS_VLAN, NIOS_ADMINUSER
+
         update = False
         new_name = None
         return_fields = list(ib_spec.keys())
-        test_obj_filter = obj_filter.copy()
 
-        ib_obj = wapi.get_object(ib_obj_type, test_obj_filter, return_fields=return_fields)
+        # Password is write-only and must not be requested back from the API.
+        if ib_obj_type == NIOS_ADMINUSER and 'password' in return_fields:
+            return_fields.remove('password')
+
+        # VLAN lookups must include the resolved parent reference.
+        if ib_obj_type == NIOS_VLAN and 'parent' in ib_spec and 'transform' in ib_spec['parent']:
+            obj_filter['parent'] = ib_spec['parent']['transform'](module)
+
+        if 'name' in obj_filter:
+            old_name = None
+            try:
+                name_obj = check_type_dict(obj_filter['name'])
+                # network_view supports searching/updating with camelCase, so
+                # its names must not be lower-cased.
+                if ib_obj_type == NIOS_NETWORK_VIEW:
+                    old_name = name_obj['old_name']
+                    new_name = name_obj['new_name']
+                else:
+                    old_name = name_obj['old_name'].lower()
+                    new_name = name_obj['new_name'].lower()
+            except TypeError:
+                old_name = None
+                new_name = None
+
+            if old_name and new_name:
+                if ib_obj_type == NIOS_VLAN:
+                    test_obj_filter = dict([('name', old_name),
+                                            ('id', obj_filter.get('id')),
+                                            ('parent', obj_filter.get('parent'))])
+                else:
+                    test_obj_filter = dict([('name', old_name)])
+
+                ib_obj = wapi.get_object(ib_obj_type, test_obj_filter, return_fields=return_fields)
+                if ib_obj:
+                    obj_filter['name'] = new_name
+                else:
+                    raise Exception("object with name: '%s' is not found" % old_name)
+                update = True
+                return ib_obj, update, new_name
+
+        ib_obj = wapi.get_object(ib_obj_type, obj_filter.copy(), return_fields=return_fields)
         return ib_obj, update, new_name
 
     def resolve_current(self, ib_obj_ref, obj_filter, proposed_object=None):
@@ -87,6 +137,10 @@ class BaseObjectHandler(object):
     def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module, ib_obj_type):
         """Hook before update. Return (ref, proposed_object) or None to skip update."""
         proposed_object = self.on_update(proposed_object, ib_spec)
+        # network_view is not updatable for generic object types. Handlers for
+        # fixed addresses and ranges override this to preserve it.
+        if 'network_view' in proposed_object:
+            proposed_object.pop('network_view')
         return ref, proposed_object
 
     def pre_delete(self, wapi, ref, proposed_object):
