@@ -1,0 +1,196 @@
+---
+# Field-coverage: nios_dtc_pool
+# Tests: name(ib_req), lb_method, servers, monitors, comment, extattrs
+# lb_method is not ib_req in pool (unlike lbdn) — it is updatable
+- name: "FIELDS | nios_dtc_pool"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+
+    - name: Ensure "Site" EA exists (required for extattrs tests)
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: Site
+        type: STRING
+        state: present
+        provider: "{{ nios_provider }}"
+
+    # Prereqs
+    - name: Pre-cleanup pool
+      infoblox.nios_modules.nios_dtc_pool:
+        name: rf-dtc-pool-fields
+        lb_preferred_method: ROUND_ROBIN
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Pre-cleanup server prereq
+      infoblox.nios_modules.nios_dtc_server:
+        name: rf-dtc-srv-pool-fields
+        host: 192.168.99.55
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Pre-cleanup monitor prereq
+      infoblox.nios_modules.nios_dtc_monitor_http:
+        name: rf-dtc-mon-pool-fields
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Prereq — create DTC server
+      infoblox.nios_modules.nios_dtc_server:
+        name: rf-dtc-srv-pool-fields
+        host: 192.168.99.55
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Prereq — create HTTP monitor
+      infoblox.nios_modules.nios_dtc_monitor_http:
+        name: rf-dtc-mon-pool-fields
+        request: "GET / HTTP/1.1\r\nConnection: close\r\n\r\n"
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Create DTC pool with all fields
+      infoblox.nios_modules.nios_dtc_pool:
+        name: rf-dtc-pool-fields
+        lb_preferred_method: ROUND_ROBIN
+        servers:
+          - server: rf-dtc-srv-pool-fields
+            ratio: 1
+        monitors:
+          - name: rf-dtc-mon-pool-fields
+            type: http
+        comment: field-test
+        extattrs:
+          Site: FieldTest
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Create again — idempotent
+      infoblox.nios_modules.nios_dtc_pool:
+        name: rf-dtc-pool-fields
+        lb_preferred_method: ROUND_ROBIN
+        servers:
+          - server: rf-dtc-srv-pool-fields
+            ratio: 1
+        monitors:
+          - name: rf-dtc-mon-pool-fields
+            type: http
+        comment: field-test
+        extattrs:
+          Site: FieldTest
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_dtc_pool:
+        name: rf-dtc-pool-fields
+        lb_preferred_method: ROUND_ROBIN
+        servers:
+          - server: rf-dtc-srv-pool-fields
+            ratio: 1
+        monitors:
+          - name: rf-dtc-mon-pool-fields
+            type: http
+        comment: field-test-updated
+        extattrs:
+          Site: FieldTest
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment — idempotent
+      infoblox.nios_modules.nios_dtc_pool:
+        name: rf-dtc-pool-fields
+        lb_preferred_method: ROUND_ROBIN
+        servers:
+          - server: rf-dtc-srv-pool-fields
+            ratio: 1
+        monitors:
+          - name: rf-dtc-mon-pool-fields
+            type: http
+        comment: field-test-updated
+        extattrs:
+          Site: FieldTest
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Update extattrs
+      infoblox.nios_modules.nios_dtc_pool:
+        name: rf-dtc-pool-fields
+        lb_preferred_method: ROUND_ROBIN
+        servers:
+          - server: rf-dtc-srv-pool-fields
+            ratio: 1
+        monitors:
+          - name: rf-dtc-mon-pool-fields
+            type: http
+        comment: field-test-updated
+        extattrs:
+          Site: Updated
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update3
+
+    - name: Re-update extattrs — idempotent
+      infoblox.nios_modules.nios_dtc_pool:
+        name: rf-dtc-pool-fields
+        lb_preferred_method: ROUND_ROBIN
+        servers:
+          - server: rf-dtc-srv-pool-fields
+            ratio: 1
+        monitors:
+          - name: rf-dtc-mon-pool-fields
+            type: http
+        comment: field-test-updated
+        extattrs:
+          Site: Updated
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update4
+
+    - name: Delete DTC pool
+      infoblox.nios_modules.nios_dtc_pool:
+        name: rf-dtc-pool-fields
+        lb_preferred_method: ROUND_ROBIN
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete — idempotent
+      infoblox.nios_modules.nios_dtc_pool:
+        name: rf-dtc-pool-fields
+        lb_preferred_method: ROUND_ROBIN
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Cleanup prereqs
+      infoblox.nios_modules.nios_dtc_monitor_http:
+        name: rf-dtc-mon-pool-fields
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Cleanup server prereq
+      infoblox.nios_modules.nios_dtc_server:
+        name: rf-dtc-srv-pool-fields
+        host: 192.168.99.55
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Assert all field operations
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - update3.changed
+          - not update4.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_dtc_pool fields PASSED"
+        fail_msg: "nios_dtc_pool fields FAILED"

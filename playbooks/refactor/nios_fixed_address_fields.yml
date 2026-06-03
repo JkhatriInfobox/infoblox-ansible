@@ -1,0 +1,152 @@
+---
+# Field-coverage: nios_fixed_address
+# Tests: ipaddr(ib_req), mac(ib_req), name, network_view, comment, extattrs, options
+- name: "FIELDS | nios_fixed_address"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+
+    - name: Ensure "Site" EA exists (required for extattrs tests)
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: Site
+        type: STRING
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Pre-cleanup fixed address
+      infoblox.nios_modules.nios_fixed_address:
+        ipaddr: 192.168.98.50
+        mac: "00:50:56:02:00:01"
+        name: rf-fa.example.com
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Pre-cleanup prereq network
+      infoblox.nios_modules.nios_network:
+        network: 192.168.98.0/24
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Prereq — create parent network
+      infoblox.nios_modules.nios_network:
+        network: 192.168.98.0/24
+        comment: prereq for fixed_address fields
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Create fixed address with all fields
+      infoblox.nios_modules.nios_fixed_address:
+        ipaddr: 192.168.98.50
+        mac: "00:50:56:02:00:01"
+        name: rf-fa.example.com
+        network_view: default
+        comment: field-test
+        extattrs:
+          Site: FieldTest
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Create again — idempotent
+      infoblox.nios_modules.nios_fixed_address:
+        ipaddr: 192.168.98.50
+        mac: "00:50:56:02:00:01"
+        name: rf-fa.example.com
+        network_view: default
+        comment: field-test
+        extattrs:
+          Site: FieldTest
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_fixed_address:
+        ipaddr: 192.168.98.50
+        mac: "00:50:56:02:00:01"
+        name: rf-fa.example.com
+        network_view: default
+        comment: field-test-updated
+        extattrs:
+          Site: FieldTest
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment — idempotent
+      infoblox.nios_modules.nios_fixed_address:
+        ipaddr: 192.168.98.50
+        mac: "00:50:56:02:00:01"
+        name: rf-fa.example.com
+        network_view: default
+        comment: field-test-updated
+        extattrs:
+          Site: FieldTest
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Update name and extattrs
+      infoblox.nios_modules.nios_fixed_address:
+        ipaddr: 192.168.98.50
+        mac: "00:50:56:02:00:01"
+        name: rf-fa-updated.example.com
+        network_view: default
+        comment: field-test-updated
+        extattrs:
+          Site: Updated
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update3
+
+    - name: Re-update name — idempotent
+      infoblox.nios_modules.nios_fixed_address:
+        ipaddr: 192.168.98.50
+        mac: "00:50:56:02:00:01"
+        name: rf-fa-updated.example.com
+        network_view: default
+        comment: field-test-updated
+        extattrs:
+          Site: Updated
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update4
+
+    - name: Delete fixed address
+      infoblox.nios_modules.nios_fixed_address:
+        ipaddr: 192.168.98.50
+        mac: "00:50:56:02:00:01"
+        name: rf-fa-updated.example.com
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete — idempotent
+      infoblox.nios_modules.nios_fixed_address:
+        ipaddr: 192.168.98.50
+        mac: "00:50:56:02:00:01"
+        name: rf-fa-updated.example.com
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Cleanup prereq network
+      infoblox.nios_modules.nios_network:
+        network: 192.168.98.0/24
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Assert all field operations
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - update3.changed
+          - not update4.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_fixed_address fields PASSED"
+        fail_msg: "nios_fixed_address fields FAILED"

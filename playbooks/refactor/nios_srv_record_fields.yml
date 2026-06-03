@@ -1,0 +1,158 @@
+---
+# Field-coverage: nios_srv_record
+# Tests: name(ib_req), view(ib_req), port(ib_req), priority(ib_req), target(ib_req), weight(ib_req), ttl, extattrs, comment
+# NOTE: ALL key fields are ib_req — only ttl, comment, extattrs can be updated without recreating
+- name: "FIELDS | nios_srv_record"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+
+    - name: Ensure "Site" EA exists (required for extattrs tests)
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: Site
+        type: STRING
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Pre-cleanup
+      infoblox.nios_modules.nios_srv_record:
+        name: _sip._tcp.example.com
+        port: 5060
+        priority: 10
+        weight: 20
+        target: rf-srv.example.com
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create SRV record with all fields
+      infoblox.nios_modules.nios_srv_record:
+        name: _sip._tcp.example.com
+        view: default
+        port: 5060
+        priority: 10
+        weight: 20
+        target: rf-srv.example.com
+        ttl: 300
+        comment: field-test
+        extattrs:
+          Site: FieldTest
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Create again — idempotent
+      infoblox.nios_modules.nios_srv_record:
+        name: _sip._tcp.example.com
+        view: default
+        port: 5060
+        priority: 10
+        weight: 20
+        target: rf-srv.example.com
+        ttl: 300
+        comment: field-test
+        extattrs:
+          Site: FieldTest
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_srv_record:
+        name: _sip._tcp.example.com
+        view: default
+        port: 5060
+        priority: 10
+        weight: 20
+        target: rf-srv.example.com
+        ttl: 300
+        comment: field-test-updated
+        extattrs:
+          Site: FieldTest
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment — idempotent
+      infoblox.nios_modules.nios_srv_record:
+        name: _sip._tcp.example.com
+        view: default
+        port: 5060
+        priority: 10
+        weight: 20
+        target: rf-srv.example.com
+        ttl: 300
+        comment: field-test-updated
+        extattrs:
+          Site: FieldTest
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Update ttl and extattrs
+      infoblox.nios_modules.nios_srv_record:
+        name: _sip._tcp.example.com
+        view: default
+        port: 5060
+        priority: 10
+        weight: 20
+        target: rf-srv.example.com
+        ttl: 600
+        comment: field-test-updated
+        extattrs:
+          Site: Updated
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update3
+
+    - name: Re-update ttl — idempotent
+      infoblox.nios_modules.nios_srv_record:
+        name: _sip._tcp.example.com
+        view: default
+        port: 5060
+        priority: 10
+        weight: 20
+        target: rf-srv.example.com
+        ttl: 600
+        comment: field-test-updated
+        extattrs:
+          Site: Updated
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update4
+
+    - name: Delete SRV record
+      infoblox.nios_modules.nios_srv_record:
+        name: _sip._tcp.example.com
+        port: 5060
+        priority: 10
+        weight: 20
+        target: rf-srv.example.com
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete — idempotent
+      infoblox.nios_modules.nios_srv_record:
+        name: _sip._tcp.example.com
+        port: 5060
+        priority: 10
+        weight: 20
+        target: rf-srv.example.com
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Assert all field operations
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - update3.changed
+          - not update4.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_srv_record fields PASSED"
+        fail_msg: "nios_srv_record fields FAILED"

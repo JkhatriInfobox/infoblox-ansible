@@ -359,8 +359,9 @@ def main():
         if member['enable_preferred_primaries'] is False:
             del member['enable_preferred_primaries']
             del member['preferred_primaries']
-        if member['lead'] is False:
-            del member['lead']
+        # WAPI never returns 'lead' in GET responses regardless of its value,
+        # so always remove it to avoid spurious "changed" on idempotent runs.
+        member.pop('lead', None)
         if member['grid_replicate'] is False:
             del member['grid_replicate']
 
@@ -419,7 +420,7 @@ def main():
                                   transform=ext_secondaries_transform),
         is_grid_default=dict(type='bool', default=False),
         use_external_primary=dict(type='bool', default=False),
-        extattrs=dict(),
+        extattrs=dict(type='dict'),
         comment=dict(),
     )
 
