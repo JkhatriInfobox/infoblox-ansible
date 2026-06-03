@@ -1,0 +1,58 @@
+---
+# Matrix playbook: nios_next_ip (lookup next available IP in a network)
+# Prereq: network 192.168.10.0/24 must exist
+- name: "MATRIX | nios_next_ip"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    provider_inline:
+      host: "{{ nios_provider.host }}"
+      username: "{{ nios_provider.username }}"
+      password: "{{ nios_provider.password }}"
+      wapi_version: "{{ nios_provider.wapi_version }}"
+      ssl_verify: "{{ nios_provider.ssl_verify }}"
+  tasks:
+    - name: Ensure prereq network
+      infoblox.nios_modules.nios_network:
+        network: 192.168.10.0/24
+        comment: prereq for next_ip lookup matrix
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Get next available IP from 192.168.10.0/24
+      ansible.builtin.set_fact:
+        next_ip: "{{ lookup('infoblox.nios_modules.nios_next_ip', '192.168.10.0/24',
+                      provider=provider_inline) }}"
+
+    - name: Assert next IP was returned
+      ansible.builtin.assert:
+        that:
+          - next_ip is defined
+          - next_ip | length > 0
+          - next_ip[0] | ansible.utils.ipaddr('address') is not none
+
+    - name: Get next 3 available IPs from 192.168.10.0/24
+      ansible.builtin.set_fact:
+        next_ips: "{{ lookup('infoblox.nios_modules.nios_next_ip', '192.168.10.0/24',
+                       num=3, provider=provider_inline) }}"
+
+    - name: Assert 3 IPs were returned
+      ansible.builtin.assert:
+        that:
+          - next_ips is defined
+          - next_ips | length == 3
+
+    - name: Cleanup prereq network
+      infoblox.nios_modules.nios_network:
+        network: 192.168.10.0/24
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Assert next_ip lookups succeeded
+      ansible.builtin.assert:
+        that:
+          - next_ip is defined
+          - next_ips is defined
+        success_msg: "nios_next_ip matrix PASSED"
+        fail_msg: "nios_next_ip matrix FAILED"

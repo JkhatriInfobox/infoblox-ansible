@@ -1,0 +1,91 @@
+---
+# Matrix playbook: nios_a_record (create/idempotent/update/delete + parent zone prereq)
+- name: "MATRIX | nios_a_record"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  vars:
+    parent_zone: ansible-refactor.com
+    rec_name: a.ansible-refactor.com
+    rec_ipv4: 192.168.10.1
+  tasks:
+    - name: Ensure parent zone
+      infoblox.nios_modules.nios_zone:
+        name: "{{ parent_zone }}"
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Cleanup a_record (pre)
+      infoblox.nios_modules.nios_a_record:
+        name: "{{ rec_name }}"
+        ipv4: "{{ rec_ipv4 }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create a_record
+      infoblox.nios_modules.nios_a_record:
+        name: "{{ rec_name }}"
+        ipv4: "{{ rec_ipv4 }}"
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create a_record (idempotent)
+      infoblox.nios_modules.nios_a_record:
+        name: "{{ rec_name }}"
+        ipv4: "{{ rec_ipv4 }}"
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_a_record:
+        name: "{{ rec_name }}"
+        ipv4: "{{ rec_ipv4 }}"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment (idempotent)
+      infoblox.nios_modules.nios_a_record:
+        name: "{{ rec_name }}"
+        ipv4: "{{ rec_ipv4 }}"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Delete a_record
+      infoblox.nios_modules.nios_a_record:
+        name: "{{ rec_name }}"
+        ipv4: "{{ rec_ipv4 }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete a_record (idempotent)
+      infoblox.nios_modules.nios_a_record:
+        name: "{{ rec_name }}"
+        ipv4: "{{ rec_ipv4 }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Cleanup parent zone
+      infoblox.nios_modules.nios_zone:
+        name: "{{ parent_zone }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_a_record matrix PASSED"
+        fail_msg: "nios_a_record matrix FAILED"

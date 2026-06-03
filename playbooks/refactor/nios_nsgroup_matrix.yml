@@ -1,0 +1,84 @@
+---
+# Matrix playbook: nios_nsgroup (grid nameserver group lifecycle)
+- name: "MATRIX | nios_nsgroup"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Cleanup nsgroup (pre)
+      infoblox.nios_modules.nios_nsgroup:
+        name: refactor_nsgroup
+        grid_primary:
+          - name: "{{ grid_member }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create nsgroup with grid primary
+      infoblox.nios_modules.nios_nsgroup:
+        name: refactor_nsgroup
+        grid_primary:
+          - name: "{{ grid_member }}"
+        comment: created with ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create nsgroup (idempotent)
+      infoblox.nios_modules.nios_nsgroup:
+        name: refactor_nsgroup
+        grid_primary:
+          - name: "{{ grid_member }}"
+        comment: created with ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_nsgroup:
+        name: refactor_nsgroup
+        grid_primary:
+          - name: "{{ grid_member }}"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment (idempotent)
+      infoblox.nios_modules.nios_nsgroup:
+        name: refactor_nsgroup
+        grid_primary:
+          - name: "{{ grid_member }}"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Delete nsgroup
+      infoblox.nios_modules.nios_nsgroup:
+        name: refactor_nsgroup
+        grid_primary:
+          - name: "{{ grid_member }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete nsgroup (idempotent)
+      infoblox.nios_modules.nios_nsgroup:
+        name: refactor_nsgroup
+        grid_primary:
+          - name: "{{ grid_member }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_nsgroup matrix PASSED"
+        fail_msg: "nios_nsgroup matrix FAILED"

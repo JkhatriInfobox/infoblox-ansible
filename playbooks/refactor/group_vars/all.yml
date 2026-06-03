@@ -1,0 +1,12 @@
+---
+# Shared NIOS provider used by every refactor matrix playbook.
+# Override host/credentials via -e or environment if needed.
+nios_provider:
+  host: "{{ lookup('env', 'NIOS_HOST') | default('172.28.82.65', true) }}"
+  username: "{{ lookup('env', 'NIOS_USERNAME') | default('admin', true) }}"
+  password: "{{ lookup('env', 'NIOS_PASSWORD') | default('Infoblox@123', true) }}"
+  wapi_version: "{{ lookup('env', 'NIOS_WAPI_VERSION') | default('2.13', true) }}"
+  ssl_verify: false
+
+# Grid member FQDN used in tests that need an existing member reference.
+grid_member: "infoblox.172_28_82_65"

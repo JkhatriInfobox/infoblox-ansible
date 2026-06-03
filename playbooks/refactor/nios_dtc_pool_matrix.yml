@@ -1,0 +1,103 @@
+---
+# Matrix playbook: nios_dtc_pool (requires a DTC server prereq)
+- name: "MATRIX | nios_dtc_pool"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Ensure prereq DTC server
+      infoblox.nios_modules.nios_dtc_server:
+        name: refactor_pool_server
+        host: 192.168.10.5
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Cleanup pool (pre)
+      infoblox.nios_modules.nios_dtc_pool:
+        name: refactor_web_pool
+        lb_preferred_method: ROUND_ROBIN
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create DTC pool
+      infoblox.nios_modules.nios_dtc_pool:
+        name: refactor_web_pool
+        lb_preferred_method: ROUND_ROBIN
+        servers:
+          - server: refactor_pool_server
+            ratio: 1
+        comment: Created with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create DTC pool (idempotent)
+      infoblox.nios_modules.nios_dtc_pool:
+        name: refactor_web_pool
+        lb_preferred_method: ROUND_ROBIN
+        servers:
+          - server: refactor_pool_server
+            ratio: 1
+        comment: Created with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_dtc_pool:
+        name: refactor_web_pool
+        lb_preferred_method: ROUND_ROBIN
+        servers:
+          - server: refactor_pool_server
+            ratio: 1
+        comment: Updated with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment (idempotent)
+      infoblox.nios_modules.nios_dtc_pool:
+        name: refactor_web_pool
+        lb_preferred_method: ROUND_ROBIN
+        servers:
+          - server: refactor_pool_server
+            ratio: 1
+        comment: Updated with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Delete DTC pool
+      infoblox.nios_modules.nios_dtc_pool:
+        name: refactor_web_pool
+        lb_preferred_method: ROUND_ROBIN
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete DTC pool (idempotent)
+      infoblox.nios_modules.nios_dtc_pool:
+        name: refactor_web_pool
+        lb_preferred_method: ROUND_ROBIN
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Cleanup prereq DTC server
+      infoblox.nios_modules.nios_dtc_server:
+        name: refactor_pool_server
+        host: 192.168.10.5
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_dtc_pool matrix PASSED"
+        fail_msg: "nios_dtc_pool matrix FAILED"

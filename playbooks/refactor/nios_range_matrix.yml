@@ -1,0 +1,98 @@
+---
+# Matrix playbook: nios_range (DHCP range lifecycle)
+# Prereq: parent network 192.168.10.0/24 must exist
+- name: "MATRIX | nios_range"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Ensure prereq parent network
+      infoblox.nios_modules.nios_network:
+        network: 192.168.10.0/24
+        comment: prereq for range matrix
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Cleanup range (pre)
+      infoblox.nios_modules.nios_range:
+        network: 192.168.10.0/24
+        start_addr: 192.168.10.100
+        end_addr: 192.168.10.150
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create DHCP range
+      infoblox.nios_modules.nios_range:
+        network: 192.168.10.0/24
+        start_addr: 192.168.10.100
+        end_addr: 192.168.10.150
+        comment: created with ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create DHCP range (idempotent)
+      infoblox.nios_modules.nios_range:
+        network: 192.168.10.0/24
+        start_addr: 192.168.10.100
+        end_addr: 192.168.10.150
+        comment: created with ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_range:
+        network: 192.168.10.0/24
+        start_addr: 192.168.10.100
+        end_addr: 192.168.10.150
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment (idempotent)
+      infoblox.nios_modules.nios_range:
+        network: 192.168.10.0/24
+        start_addr: 192.168.10.100
+        end_addr: 192.168.10.150
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Delete DHCP range
+      infoblox.nios_modules.nios_range:
+        network: 192.168.10.0/24
+        start_addr: 192.168.10.100
+        end_addr: 192.168.10.150
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete DHCP range (idempotent)
+      infoblox.nios_modules.nios_range:
+        network: 192.168.10.0/24
+        start_addr: 192.168.10.100
+        end_addr: 192.168.10.150
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Cleanup prereq network
+      infoblox.nios_modules.nios_network:
+        network: 192.168.10.0/24
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_range matrix PASSED"
+        fail_msg: "nios_range matrix FAILED"

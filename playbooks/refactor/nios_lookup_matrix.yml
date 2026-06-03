@@ -1,0 +1,50 @@
+---
+# Matrix playbook: nios_lookup (lookup plugin for WAPI GET queries)
+# Tests nios_lookup to fetch networkview and view objects.
+- name: "MATRIX | nios_lookup"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    provider_inline:
+      host: "{{ nios_provider.host }}"
+      username: "{{ nios_provider.username }}"
+      password: "{{ nios_provider.password }}"
+      wapi_version: "{{ nios_provider.wapi_version }}"
+      ssl_verify: "{{ nios_provider.ssl_verify }}"
+  tasks:
+    - name: Lookup all network views
+      ansible.builtin.set_fact:
+        nv_results: "{{ lookup('infoblox.nios_modules.nios_lookup', 'networkview',
+                          provider=provider_inline) }}"
+
+    - name: Assert networkview results returned
+      ansible.builtin.assert:
+        that:
+          - nv_results is defined
+          - nv_results | length > 0
+          - nv_results[0].name is defined
+
+    - name: Lookup default DNS view with filter
+      ansible.builtin.set_fact:
+        view_results: "{{ lookup('infoblox.nios_modules.nios_lookup', 'view',
+                            filter={'name': 'default'},
+                            provider=provider_inline) }}"
+
+    - name: Assert DNS view result returned
+      ansible.builtin.assert:
+        that:
+          - view_results is defined
+          - view_results.name == 'default'
+
+    - name: Lookup all host records
+      ansible.builtin.set_fact:
+        hr_results: "{{ lookup('infoblox.nios_modules.nios_lookup', 'record:host',
+                          provider=provider_inline) }}"
+
+    - name: Assert host records lookup did not fail
+      ansible.builtin.assert:
+        that:
+          - hr_results is defined
+        success_msg: "nios_lookup matrix PASSED"
+        fail_msg: "nios_lookup matrix FAILED"

@@ -1,0 +1,120 @@
+---
+# Matrix playbook: nios_host_record (ipv4, dns:false, dhcp+mac)
+- name: "MATRIX | nios_host_record"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  vars:
+    parent_zone: ansible-refactor.com
+  tasks:
+    - name: Ensure parent zone
+      infoblox.nios_modules.nios_zone:
+        name: "{{ parent_zone }}"
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Cleanup host (pre)
+      infoblox.nios_modules.nios_host_record:
+        name: host.ansible-refactor.com
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create ipv4 host record
+      infoblox.nios_modules.nios_host_record:
+        name: host.ansible-refactor.com
+        ipv4:
+          - address: 192.168.10.1
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create ipv4 host record (idempotent)
+      infoblox.nios_modules.nios_host_record:
+        name: host.ansible-refactor.com
+        ipv4:
+          - address: 192.168.10.1
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_host_record:
+        name: host.ansible-refactor.com
+        ipv4:
+          - address: 192.168.10.1
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Delete host record
+      infoblox.nios_modules.nios_host_record:
+        name: host.ansible-refactor.com
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete host record (idempotent)
+      infoblox.nios_modules.nios_host_record:
+        name: host.ansible-refactor.com
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Ensure prereq network for bypass-DNS host
+      infoblox.nios_modules.nios_network:
+        network: 192.168.10.0/24
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Create host record bypassing DNS
+      infoblox.nios_modules.nios_host_record:
+        name: refactorhost
+        ipv4:
+          - address: 192.168.10.1
+        dns: false
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create3
+
+    - name: Re-create host record bypassing DNS (idempotent)
+      infoblox.nios_modules.nios_host_record:
+        name: refactorhost
+        ipv4:
+          - address: 192.168.10.1
+        dns: false
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create4
+
+    - name: Cleanup dns:false host
+      infoblox.nios_modules.nios_host_record:
+        name: refactorhost
+        dns: false
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Cleanup prereq network
+      infoblox.nios_modules.nios_network:
+        network: 192.168.10.0/24
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Cleanup parent zone
+      infoblox.nios_modules.nios_zone:
+        name: "{{ parent_zone }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - delete1.changed
+          - not delete2.changed
+          - create3.changed
+          - not create4.changed
+        success_msg: "nios_host_record matrix PASSED"
+        fail_msg: "nios_host_record matrix FAILED"

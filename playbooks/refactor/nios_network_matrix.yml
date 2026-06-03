@@ -1,0 +1,95 @@
+---
+# Matrix playbook: nios_network (ipv4 create/update options, ipv6, logic filter)
+- name: "MATRIX | nios_network"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  vars:
+    net4: 192.168.110.0/24
+    net4b: 192.168.111.0/24
+    net6: "fd00:beef::/64"
+  tasks:
+    - name: Cleanup ipv4 (pre)
+      infoblox.nios_modules.nios_network:
+        network: "{{ net4 }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create ipv4 network
+      infoblox.nios_modules.nios_network:
+        network: "{{ net4 }}"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: c1
+
+    - name: Re-create ipv4 network (idempotent)
+      infoblox.nios_modules.nios_network:
+        network: "{{ net4 }}"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: c2
+
+    - name: Set dhcp options
+      infoblox.nios_modules.nios_network:
+        network: "{{ net4 }}"
+        comment: this is a test comment
+        options:
+          - name: domain-name
+            value: ansible.com
+        state: present
+        provider: "{{ nios_provider }}"
+      register: u1
+
+    - name: Re-set dhcp options (idempotent)
+      infoblox.nios_modules.nios_network:
+        network: "{{ net4 }}"
+        comment: this is a test comment
+        options:
+          - name: domain-name
+            value: ansible.com
+        state: present
+        provider: "{{ nios_provider }}"
+      register: u2
+
+    - name: Delete ipv4 network
+      infoblox.nios_modules.nios_network:
+        network: "{{ net4 }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: d1
+
+    - name: Re-delete ipv4 network (idempotent)
+      infoblox.nios_modules.nios_network:
+        network: "{{ net4 }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: d2
+
+    - name: Create ipv6 network
+      infoblox.nios_modules.nios_network:
+        network: "{{ net6 }}"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: c6
+
+    - name: Cleanup ipv6
+      infoblox.nios_modules.nios_network:
+        network: "{{ net6 }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - c1.changed
+          - not c2.changed
+          - u1.changed
+          - not u2.changed
+          - d1.changed
+          - not d2.changed
+          - c6.changed
+        success_msg: "nios_network matrix PASSED"
+        fail_msg: "nios_network matrix FAILED"

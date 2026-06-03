@@ -1,0 +1,60 @@
+---
+# Matrix playbook: nios_next_network (lookup next available subnet in a network container)
+# Prereq: network container 192.168.0.0/16 must exist
+- name: "MATRIX | nios_next_network"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    provider_inline:
+      host: "{{ nios_provider.host }}"
+      username: "{{ nios_provider.username }}"
+      password: "{{ nios_provider.password }}"
+      wapi_version: "{{ nios_provider.wapi_version }}"
+      ssl_verify: "{{ nios_provider.ssl_verify }}"
+  tasks:
+    - name: Ensure prereq network container
+      infoblox.nios_modules.nios_network:
+        network: 192.168.0.0/16
+        comment: prereq for next_network lookup matrix
+        container: true
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Get next available /24 subnet from container 192.168.0.0/16
+      ansible.builtin.set_fact:
+        next_net: "{{ lookup('infoblox.nios_modules.nios_next_network', '192.168.0.0/16',
+                       cidr=24, provider=provider_inline) }}"
+
+    - name: Assert next network was returned
+      ansible.builtin.assert:
+        that:
+          - next_net is defined
+          - next_net | length > 0
+          - next_net[0] | ansible.utils.ipaddr('network') is not none
+
+    - name: Get next 2 available /25 subnets from container
+      ansible.builtin.set_fact:
+        next_nets: "{{ lookup('infoblox.nios_modules.nios_next_network', '192.168.0.0/16',
+                        cidr=25, num=2, provider=provider_inline) }}"
+
+    - name: Assert 2 networks were returned
+      ansible.builtin.assert:
+        that:
+          - next_nets is defined
+          - next_nets | length == 2
+
+    - name: Cleanup prereq network container
+      infoblox.nios_modules.nios_network:
+        network: 192.168.0.0/16
+        container: true
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Assert next_network lookups succeeded
+      ansible.builtin.assert:
+        that:
+          - next_net is defined
+          - next_nets is defined
+        success_msg: "nios_next_network matrix PASSED"
+        fail_msg: "nios_next_network matrix FAILED"

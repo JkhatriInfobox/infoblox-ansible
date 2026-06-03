@@ -1,0 +1,47 @@
+---
+# Matrix playbook: nios_next_vlan_id (lookup next available VLAN ID)
+# Uses the built-in 'default' VLAN view that ships with every NIOS grid.
+- name: "MATRIX | nios_next_vlan_id"
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    provider_inline:
+      host: "{{ nios_provider.host }}"
+      username: "{{ nios_provider.username }}"
+      password: "{{ nios_provider.password }}"
+      wapi_version: "{{ nios_provider.wapi_version }}"
+      ssl_verify: "{{ nios_provider.ssl_verify }}"
+  tasks:
+    - name: Get next available VLAN ID from default vlan view
+      ansible.builtin.set_fact:
+        next_vlan: "{{ lookup('infoblox.nios_modules.nios_next_vlan_id',
+                        parent='default',
+                        provider=provider_inline) }}"
+
+    - name: Assert next VLAN ID was returned
+      ansible.builtin.assert:
+        that:
+          - next_vlan is defined
+          - next_vlan | length > 0
+          - next_vlan[0] | int >= 1
+
+    - name: Get next 2 available VLAN IDs
+      ansible.builtin.set_fact:
+        next_vlans: "{{ lookup('infoblox.nios_modules.nios_next_vlan_id',
+                          parent='default', num=2,
+                          provider=provider_inline) }}"
+
+    - name: Assert 2 VLAN IDs were returned
+      ansible.builtin.assert:
+        that:
+          - next_vlans is defined
+          - next_vlans | length == 2
+
+    - name: Assert next_vlan_id lookups succeeded
+      ansible.builtin.assert:
+        that:
+          - next_vlan is defined
+          - next_vlans is defined
+        success_msg: "nios_next_vlan_id matrix PASSED"
+        fail_msg: "nios_next_vlan_id matrix FAILED"

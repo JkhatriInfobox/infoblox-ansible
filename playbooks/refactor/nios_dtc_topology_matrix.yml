@@ -1,0 +1,78 @@
+---
+# Matrix playbook: nios_dtc_topology (name/comment lifecycle)
+#
+# KNOWN WAPI 2.13 LIMITATION:
+#   The 'destination_link' field in topology rules is rejected by WAPI 2.13
+#   at the IBAP layer (".com.infoblox.dns.idns_topology_rule has no member
+#   dest_link") even though the field is present in the REST schema.
+#   This affects both POST (create) and PUT (update) with inline rules.
+#   The rules lifecycle test is therefore skipped for WAPI 2.13;
+#   only name/comment create-update-delete idempotency is validated here.
+- name: "MATRIX | nios_dtc_topology"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Cleanup topology (pre)
+      infoblox.nios_modules.nios_dtc_topology:
+        name: refactor_topology
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create DTC topology (no rules - WAPI 2.13 limitation)
+      infoblox.nios_modules.nios_dtc_topology:
+        name: refactor_topology
+        comment: created with ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create DTC topology (idempotent)
+      infoblox.nios_modules.nios_dtc_topology:
+        name: refactor_topology
+        comment: created with ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_dtc_topology:
+        name: refactor_topology
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment (idempotent)
+      infoblox.nios_modules.nios_dtc_topology:
+        name: refactor_topology
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Delete DTC topology
+      infoblox.nios_modules.nios_dtc_topology:
+        name: refactor_topology
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete DTC topology (idempotent)
+      infoblox.nios_modules.nios_dtc_topology:
+        name: refactor_topology
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_dtc_topology matrix PASSED (rules skipped - WAPI 2.13 limitation)"
+        fail_msg: "nios_dtc_topology matrix FAILED"

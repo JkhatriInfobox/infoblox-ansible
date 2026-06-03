@@ -1,0 +1,62 @@
+---
+# Matrix playbook: nios_member (grid member lifecycle)
+#
+# SAFETY NOTE: This playbook ONLY updates comment/extattrs on the existing
+# grid member (infoblox.172_28_82_65). It does NOT rename, change VIP/IP
+# settings, or delete the member — any of those would be destructive to the
+# lab grid. There is intentionally no delete test for this resource.
+- name: "MATRIX | nios_member"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Update member comment
+      infoblox.nios_modules.nios_member:
+        host_name: "{{ grid_member }}"
+        comment: updated with ansible refactor test
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update member comment (idempotent)
+      infoblox.nios_modules.nios_member:
+        host_name: "{{ grid_member }}"
+        comment: updated with ansible refactor test
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Update member comment again
+      infoblox.nios_modules.nios_member:
+        host_name: "{{ grid_member }}"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update3
+
+    - name: Re-update (idempotent)
+      infoblox.nios_modules.nios_member:
+        host_name: "{{ grid_member }}"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update4
+
+    - name: Clear member comment (restore)
+      infoblox.nios_modules.nios_member:
+        host_name: "{{ grid_member }}"
+        comment: ""
+        state: present
+        provider: "{{ nios_provider }}"
+      register: restore1
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - update1.changed
+          - not update2.changed
+          - update3.changed
+          - not update4.changed
+          - restore1.changed
+        success_msg: "nios_member matrix PASSED"
+        fail_msg: "nios_member matrix FAILED"

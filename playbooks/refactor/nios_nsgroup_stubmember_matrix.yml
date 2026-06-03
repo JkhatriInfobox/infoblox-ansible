@@ -1,0 +1,84 @@
+---
+# Matrix playbook: nios_nsgroup_stubmember (stub member nsgroup lifecycle)
+- name: "MATRIX | nios_nsgroup_stubmember"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Cleanup stub member group (pre)
+      infoblox.nios_modules.nios_nsgroup_stubmember:
+        name: refactor_nsgroup_stub
+        stub_members:
+          - name: "{{ grid_member }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create stub member nsgroup
+      infoblox.nios_modules.nios_nsgroup_stubmember:
+        name: refactor_nsgroup_stub
+        stub_members:
+          - name: "{{ grid_member }}"
+        comment: created with ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create stub member nsgroup (idempotent)
+      infoblox.nios_modules.nios_nsgroup_stubmember:
+        name: refactor_nsgroup_stub
+        stub_members:
+          - name: "{{ grid_member }}"
+        comment: created with ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_nsgroup_stubmember:
+        name: refactor_nsgroup_stub
+        stub_members:
+          - name: "{{ grid_member }}"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment (idempotent)
+      infoblox.nios_modules.nios_nsgroup_stubmember:
+        name: refactor_nsgroup_stub
+        stub_members:
+          - name: "{{ grid_member }}"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Delete stub member nsgroup
+      infoblox.nios_modules.nios_nsgroup_stubmember:
+        name: refactor_nsgroup_stub
+        stub_members:
+          - name: "{{ grid_member }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete stub member nsgroup (idempotent)
+      infoblox.nios_modules.nios_nsgroup_stubmember:
+        name: refactor_nsgroup_stub
+        stub_members:
+          - name: "{{ grid_member }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_nsgroup_stubmember matrix PASSED"
+        fail_msg: "nios_nsgroup_stubmember matrix FAILED"

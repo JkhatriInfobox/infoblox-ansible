@@ -1,0 +1,82 @@
+---
+# Matrix playbook: nios_adminuser
+- name: "MATRIX | nios_adminuser"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  vars:
+    user_name: ansible-refactor-adminuser
+  tasks:
+    - name: Cleanup (pre)
+      infoblox.nios_modules.nios_adminuser:
+        name: "{{ user_name }}"
+        admin_groups: admin-group
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create adminuser
+      infoblox.nios_modules.nios_adminuser:
+        name: "{{ user_name }}"
+        admin_groups: admin-group
+        password: Pwd@1234
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create adminuser (idempotent, password omitted)
+      infoblox.nios_modules.nios_adminuser:
+        name: "{{ user_name }}"
+        admin_groups: admin-group
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment and extattrs
+      infoblox.nios_modules.nios_adminuser:
+        name: "{{ user_name }}"
+        admin_groups: admin-group
+        comment: this is an example comment
+        extattrs:
+          Site: west-dc
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment and extattrs (idempotent)
+      infoblox.nios_modules.nios_adminuser:
+        name: "{{ user_name }}"
+        admin_groups: admin-group
+        comment: this is an example comment
+        extattrs:
+          Site: west-dc
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Delete adminuser
+      infoblox.nios_modules.nios_adminuser:
+        name: "{{ user_name }}"
+        admin_groups: admin-group
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete adminuser (idempotent)
+      infoblox.nios_modules.nios_adminuser:
+        name: "{{ user_name }}"
+        admin_groups: admin-group
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_adminuser matrix PASSED"
+        fail_msg: "nios_adminuser matrix FAILED"

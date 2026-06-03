@@ -1,0 +1,76 @@
+---
+# Matrix playbook: nios_zone
+# Covers: create, idempotent re-create, update (comment + extattrs),
+#         idempotent re-update, delete, idempotent re-delete.
+- name: "MATRIX | nios_zone"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  vars:
+    zone_name: ansible-refactor-zone.com
+  tasks:
+    - name: Cleanup zone (pre)
+      infoblox.nios_modules.nios_zone:
+        name: "{{ zone_name }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create zone
+      infoblox.nios_modules.nios_zone:
+        name: "{{ zone_name }}"
+        state: present
+        provider: "{{ nios_provider }}"
+      register: zone_create1
+
+    - name: Re-create zone (idempotent)
+      infoblox.nios_modules.nios_zone:
+        name: "{{ zone_name }}"
+        state: present
+        provider: "{{ nios_provider }}"
+      register: zone_create2
+
+    - name: Update comment and extattrs
+      infoblox.nios_modules.nios_zone:
+        name: "{{ zone_name }}"
+        comment: this is an example comment
+        extattrs:
+          Site: west-dc
+        state: present
+        provider: "{{ nios_provider }}"
+      register: zone_update1
+
+    - name: Re-update comment and extattrs (idempotent)
+      infoblox.nios_modules.nios_zone:
+        name: "{{ zone_name }}"
+        comment: this is an example comment
+        extattrs:
+          Site: west-dc
+        state: present
+        provider: "{{ nios_provider }}"
+      register: zone_update2
+
+    - name: Delete zone
+      infoblox.nios_modules.nios_zone:
+        name: "{{ zone_name }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: zone_delete1
+
+    - name: Re-delete zone (idempotent)
+      infoblox.nios_modules.nios_zone:
+        name: "{{ zone_name }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: zone_delete2
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - zone_create1.changed
+          - not zone_create2.changed
+          - zone_update1.changed
+          - not zone_update2.changed
+          - zone_delete1.changed
+          - not zone_delete2.changed
+        success_msg: "nios_zone matrix PASSED"
+        fail_msg: "nios_zone matrix FAILED"

@@ -1,0 +1,142 @@
+---
+# Matrix playbook: nios_extensible_attribute (STRING/INTEGER/ENUM/DATE)
+- name: "MATRIX | nios_extensible_attribute"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Cleanup STRING EA (pre)
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: refactorStringEA
+        type: STRING
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create STRING EA
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: refactorStringEA
+        type: STRING
+        default_value: string
+        min: 1
+        max: 15
+        comment: Created string EA with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: s_create1
+
+    - name: Re-create STRING EA (idempotent)
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: refactorStringEA
+        type: STRING
+        default_value: string
+        min: 1
+        max: 15
+        comment: Created string EA with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: s_create2
+
+    - name: Update STRING EA comment
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: refactorStringEA
+        type: STRING
+        default_value: string
+        min: 1
+        max: 15
+        comment: Updated string EA with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: s_update1
+
+    - name: Re-update STRING EA comment (idempotent)
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: refactorStringEA
+        type: STRING
+        default_value: string
+        min: 1
+        max: 15
+        comment: Updated string EA with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: s_update2
+
+    - name: Create ENUM EA
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: refactorEnumEA
+        type: ENUM
+        list_values:
+          - option1
+          - option2
+        default_value: option1
+        comment: Created enum EA with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: e_create1
+
+    - name: Re-create ENUM EA (idempotent)
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: refactorEnumEA
+        type: ENUM
+        list_values:
+          - option1
+          - option2
+        default_value: option1
+        comment: Created enum EA with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: e_create2
+
+    - name: Create DATE EA
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: refactorDateEA
+        type: DATE
+        default_value: "1672531200"
+        comment: Created date EA with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: dt_create1
+
+    - name: Delete STRING EA
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: refactorStringEA
+        type: STRING
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: s_delete1
+
+    - name: Re-delete STRING EA (idempotent)
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: refactorStringEA
+        type: STRING
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: s_delete2
+
+    - name: Cleanup ENUM EA
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: refactorEnumEA
+        type: ENUM
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Cleanup DATE EA
+      infoblox.nios_modules.nios_extensible_attribute:
+        name: refactorDateEA
+        type: DATE
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - s_create1.changed
+          - not s_create2.changed
+          - s_update1.changed
+          - not s_update2.changed
+          - e_create1.changed
+          - not e_create2.changed
+          - dt_create1.changed
+          - s_delete1.changed
+          - not s_delete2.changed
+        success_msg: "nios_extensible_attribute matrix PASSED"
+        fail_msg: "nios_extensible_attribute matrix FAILED"

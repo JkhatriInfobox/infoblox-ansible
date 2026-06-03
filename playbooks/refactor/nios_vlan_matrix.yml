@@ -1,0 +1,106 @@
+---
+# Matrix playbook: nios_vlan
+- name: "MATRIX | nios_vlan"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  vars:
+    vlan_name: ansible-refactor-vlan
+  tasks:
+    - name: Cleanup (pre)
+      infoblox.nios_modules.nios_vlan:
+        name: "{{ vlan_name }}"
+        id: 10
+        parent: default
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create VLAN
+      infoblox.nios_modules.nios_vlan:
+        name: "{{ vlan_name }}"
+        id: 10
+        parent: default
+        comment: this is an example comment
+        contact: example@email.com
+        department: IT
+        description: This is an example VLAN
+        reserved: true
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create VLAN (idempotent)
+      infoblox.nios_modules.nios_vlan:
+        name: "{{ vlan_name }}"
+        id: 10
+        parent: default
+        comment: this is an example comment
+        contact: example@email.com
+        department: IT
+        description: This is an example VLAN
+        reserved: true
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update extattrs
+      infoblox.nios_modules.nios_vlan:
+        name: "{{ vlan_name }}"
+        id: 10
+        parent: default
+        comment: this is an example comment
+        contact: example@email.com
+        department: IT
+        description: This is an example VLAN
+        reserved: true
+        extattrs:
+          Site: west-dc
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update extattrs (idempotent)
+      infoblox.nios_modules.nios_vlan:
+        name: "{{ vlan_name }}"
+        id: 10
+        parent: default
+        comment: this is an example comment
+        contact: example@email.com
+        department: IT
+        description: This is an example VLAN
+        reserved: true
+        extattrs:
+          Site: west-dc
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Delete VLAN
+      infoblox.nios_modules.nios_vlan:
+        name: "{{ vlan_name }}"
+        id: 10
+        parent: default
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete VLAN (idempotent)
+      infoblox.nios_modules.nios_vlan:
+        name: "{{ vlan_name }}"
+        id: 10
+        parent: default
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_vlan matrix PASSED"
+        fail_msg: "nios_vlan matrix FAILED"

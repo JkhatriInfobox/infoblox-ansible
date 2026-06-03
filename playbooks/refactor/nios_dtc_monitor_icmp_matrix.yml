@@ -1,0 +1,68 @@
+---
+# Matrix playbook: nios_dtc_monitor_icmp
+- name: "MATRIX | nios_dtc_monitor_icmp"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Cleanup (pre)
+      infoblox.nios_modules.nios_dtc_monitor_icmp:
+        name: refactor_icmp_monitor
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create
+      infoblox.nios_modules.nios_dtc_monitor_icmp:
+        name: refactor_icmp_monitor
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create (idempotent)
+      infoblox.nios_modules.nios_dtc_monitor_icmp:
+        name: refactor_icmp_monitor
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update field
+      infoblox.nios_modules.nios_dtc_monitor_icmp:
+        name: refactor_icmp_monitor
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update field (idempotent)
+      infoblox.nios_modules.nios_dtc_monitor_icmp:
+        name: refactor_icmp_monitor
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Delete
+      infoblox.nios_modules.nios_dtc_monitor_icmp:
+        name: refactor_icmp_monitor
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete (idempotent)
+      infoblox.nios_modules.nios_dtc_monitor_icmp:
+        name: refactor_icmp_monitor
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_dtc_monitor_icmp matrix PASSED"
+        fail_msg: "nios_dtc_monitor_icmp matrix FAILED"

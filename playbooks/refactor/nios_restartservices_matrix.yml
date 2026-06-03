@@ -1,0 +1,23 @@
+---
+# Matrix playbook: nios_restartservices
+# Triggers a "restart if needed" for all services on the grid.
+# No state/idempotency concept — module always reports changed=True on success.
+- name: "MATRIX | nios_restartservices"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Restart all grid services (if needed)
+      infoblox.nios_modules.nios_restartservices:
+        restart_option: RESTART_IF_NEEDED
+        services:
+          - ALL
+        provider: "{{ nios_provider }}"
+      register: restart_result
+
+    - name: Assert restart did not error
+      ansible.builtin.assert:
+        that:
+          - restart_result is not failed
+        success_msg: "nios_restartservices matrix PASSED"
+        fail_msg: "nios_restartservices matrix FAILED"

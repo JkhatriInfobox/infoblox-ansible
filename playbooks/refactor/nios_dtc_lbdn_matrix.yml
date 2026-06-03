@@ -1,0 +1,164 @@
+---
+# Matrix playbook: nios_dtc_lbdn (requires DTC server + pool + auth zone prereqs)
+- name: "MATRIX | nios_dtc_lbdn"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  vars:
+    auth_zone: ansible-refactor.com
+  tasks:
+    - name: Ensure prereq auth zone
+      infoblox.nios_modules.nios_zone:
+        name: "{{ auth_zone }}"
+        grid_primary:
+          - name: infoblox.172_28_82_65
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Ensure prereq DTC server
+      infoblox.nios_modules.nios_dtc_server:
+        name: refactor_lbdn_server
+        host: 192.168.10.7
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Ensure prereq DTC pool
+      infoblox.nios_modules.nios_dtc_pool:
+        name: refactor_lbdn_pool
+        lb_preferred_method: ROUND_ROBIN
+        servers:
+          - server: refactor_lbdn_server
+            ratio: 1
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Cleanup lbdn (pre)
+      infoblox.nios_modules.nios_dtc_lbdn:
+        name: refactor_lbdn
+        lb_method: ROUND_ROBIN
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create DTC LBDN
+      infoblox.nios_modules.nios_dtc_lbdn:
+        name: refactor_lbdn
+        lb_method: ROUND_ROBIN
+        pools:
+          - pool: refactor_lbdn_pool
+            ratio: 1
+        auth_zones:
+          - fqdn: "{{ auth_zone }}"
+            view: default
+        patterns:
+          - "*.ansible-refactor.com"
+        types:
+          - A
+        comment: Created with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create DTC LBDN (idempotent)
+      infoblox.nios_modules.nios_dtc_lbdn:
+        name: refactor_lbdn
+        lb_method: ROUND_ROBIN
+        pools:
+          - pool: refactor_lbdn_pool
+            ratio: 1
+        auth_zones:
+          - fqdn: "{{ auth_zone }}"
+            view: default
+        patterns:
+          - "*.ansible-refactor.com"
+        types:
+          - A
+        comment: Created with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_dtc_lbdn:
+        name: refactor_lbdn
+        lb_method: ROUND_ROBIN
+        pools:
+          - pool: refactor_lbdn_pool
+            ratio: 1
+        auth_zones:
+          - fqdn: "{{ auth_zone }}"
+            view: default
+        patterns:
+          - "*.ansible-refactor.com"
+        types:
+          - A
+        comment: Updated with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment (idempotent)
+      infoblox.nios_modules.nios_dtc_lbdn:
+        name: refactor_lbdn
+        lb_method: ROUND_ROBIN
+        pools:
+          - pool: refactor_lbdn_pool
+            ratio: 1
+        auth_zones:
+          - fqdn: "{{ auth_zone }}"
+            view: default
+        patterns:
+          - "*.ansible-refactor.com"
+        types:
+          - A
+        comment: Updated with Ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Delete DTC LBDN
+      infoblox.nios_modules.nios_dtc_lbdn:
+        name: refactor_lbdn
+        lb_method: ROUND_ROBIN
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete DTC LBDN (idempotent)
+      infoblox.nios_modules.nios_dtc_lbdn:
+        name: refactor_lbdn
+        lb_method: ROUND_ROBIN
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Cleanup prereq pool
+      infoblox.nios_modules.nios_dtc_pool:
+        name: refactor_lbdn_pool
+        lb_preferred_method: ROUND_ROBIN
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Cleanup prereq server
+      infoblox.nios_modules.nios_dtc_server:
+        name: refactor_lbdn_server
+        host: 192.168.10.7
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Cleanup prereq auth zone
+      infoblox.nios_modules.nios_zone:
+        name: "{{ auth_zone }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_dtc_lbdn matrix PASSED"
+        fail_msg: "nios_dtc_lbdn matrix FAILED"

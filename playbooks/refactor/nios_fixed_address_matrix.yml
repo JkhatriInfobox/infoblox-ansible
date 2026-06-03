@@ -1,0 +1,98 @@
+---
+# Matrix playbook: nios_fixed_address (IPv4 fixed address lifecycle)
+# Prereq: parent network 192.168.10.0/24 must exist
+- name: "MATRIX | nios_fixed_address"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Ensure prereq parent network
+      infoblox.nios_modules.nios_network:
+        network: 192.168.10.0/24
+        comment: prereq for fixed_address matrix
+        state: present
+        provider: "{{ nios_provider }}"
+
+    - name: Cleanup fixed address (pre)
+      infoblox.nios_modules.nios_fixed_address:
+        name: refactor-fa.example.com
+        ipaddr: 192.168.10.50
+        mac: "00:50:56:00:00:01"
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create fixed address
+      infoblox.nios_modules.nios_fixed_address:
+        name: refactor-fa.example.com
+        ipaddr: 192.168.10.50
+        mac: "00:50:56:00:00:01"
+        comment: created with ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create fixed address (idempotent)
+      infoblox.nios_modules.nios_fixed_address:
+        name: refactor-fa.example.com
+        ipaddr: 192.168.10.50
+        mac: "00:50:56:00:00:01"
+        comment: created with ansible
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_fixed_address:
+        name: refactor-fa.example.com
+        ipaddr: 192.168.10.50
+        mac: "00:50:56:00:00:01"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment (idempotent)
+      infoblox.nios_modules.nios_fixed_address:
+        name: refactor-fa.example.com
+        ipaddr: 192.168.10.50
+        mac: "00:50:56:00:00:01"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Delete fixed address
+      infoblox.nios_modules.nios_fixed_address:
+        name: refactor-fa.example.com
+        ipaddr: 192.168.10.50
+        mac: "00:50:56:00:00:01"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete fixed address (idempotent)
+      infoblox.nios_modules.nios_fixed_address:
+        name: refactor-fa.example.com
+        ipaddr: 192.168.10.50
+        mac: "00:50:56:00:00:01"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Cleanup prereq network
+      infoblox.nios_modules.nios_network:
+        network: 192.168.10.0/24
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_fixed_address matrix PASSED"
+        fail_msg: "nios_fixed_address matrix FAILED"

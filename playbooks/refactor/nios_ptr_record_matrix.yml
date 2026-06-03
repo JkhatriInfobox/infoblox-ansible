@@ -1,0 +1,82 @@
+---
+# Matrix playbook: nios_ptr_record (ipv4 reverse via existing 10.0.0.0/8 zone, ipv6)
+- name: "MATRIX | nios_ptr_record"
+  hosts: nios
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Cleanup ipv4 ptr (pre)
+      infoblox.nios_modules.nios_ptr_record:
+        ptrdname: ptr.ansible-refactor.com
+        ipv4: 10.10.10.10
+        view: default
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create ipv4 ptr record
+      infoblox.nios_modules.nios_ptr_record:
+        ptrdname: ptr.ansible-refactor.com
+        ipv4: 10.10.10.10
+        view: default
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create1
+
+    - name: Re-create ipv4 ptr record (idempotent)
+      infoblox.nios_modules.nios_ptr_record:
+        ptrdname: ptr.ansible-refactor.com
+        ipv4: 10.10.10.10
+        view: default
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create2
+
+    - name: Update comment
+      infoblox.nios_modules.nios_ptr_record:
+        ptrdname: ptr.ansible-refactor.com
+        ipv4: 10.10.10.10
+        view: default
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update1
+
+    - name: Re-update comment (idempotent)
+      infoblox.nios_modules.nios_ptr_record:
+        ptrdname: ptr.ansible-refactor.com
+        ipv4: 10.10.10.10
+        view: default
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: update2
+
+    - name: Delete ipv4 ptr record
+      infoblox.nios_modules.nios_ptr_record:
+        ptrdname: ptr.ansible-refactor.com
+        ipv4: 10.10.10.10
+        view: default
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete1
+
+    - name: Re-delete ipv4 ptr record (idempotent)
+      infoblox.nios_modules.nios_ptr_record:
+        ptrdname: ptr.ansible-refactor.com
+        ipv4: 10.10.10.10
+        view: default
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: delete2
+
+    - name: Assert idempotence and changes
+      ansible.builtin.assert:
+        that:
+          - create1.changed
+          - not create2.changed
+          - update1.changed
+          - not update2.changed
+          - delete1.changed
+          - not delete2.changed
+        success_msg: "nios_ptr_record matrix PASSED"
+        fail_msg: "nios_ptr_record matrix FAILED"
