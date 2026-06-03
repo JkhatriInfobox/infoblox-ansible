@@ -32,6 +32,21 @@ class FixedAddressHandler(BaseObjectHandler):
         ib_obj = wapi.get_object(ib_obj_type, test_obj_filter, return_fields=return_fields)
         return ib_obj, update, new_name
 
+    def post_prepare(self, proposed_object, current_object, ib_obj_type):
+        """Strip DHCP options with use_option=False from both sides to prevent false idempotency failures."""
+        if proposed_object.get('options') is not None or current_object.get('options') is not None:
+            if proposed_object.get('options'):
+                proposed_object['options'] = [
+                    opt for opt in proposed_object['options']
+                    if opt.get('use_option', True)
+                ]
+            if current_object.get('options'):
+                current_object['options'] = [
+                    opt for opt in current_object['options']
+                    if opt.get('use_option', True)
+                ]
+        return proposed_object
+
     def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module, ib_obj_type):
         """Keep network_view for fixed addresses (unlike other types)."""
         proposed_object = self.on_update(proposed_object, ib_spec)

@@ -19,6 +19,12 @@ class MemberHandler(BaseObjectHandler):
         # Remove create_token if not set to True (WAPI never returns it)
         if proposed_object.get("create_token") is not True:
             proposed_object.pop("create_token", None)
+        # WAPI rejects both of these on the grid master with conflict errors:
+        #   upgrade_group='Default' → "The upgrade group Default is invalid for the grid master"
+        #   master_candidate=False  → "Potential master cannot be unset for the grid master"
+        # Strip them so simple updates (comment, extattrs) don't fail on the grid master.
+        proposed_object.pop("upgrade_group", None)
+        proposed_object.pop("master_candidate", None)
         return proposed_object
 
     def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):

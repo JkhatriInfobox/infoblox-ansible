@@ -17,10 +17,18 @@ class RangeHandler(BaseObjectHandler):
         if proposed_object.get('new_end_addr'):
             proposed_object['end_addr'] = proposed_object.pop('new_end_addr')
 
-        # Remove use_options=False entries for comparison
-        if proposed_object.get('options'):
+        # Strip use_option=False entries from both sides before compare.
+        # WAPI returns default DHCP options (e.g. dhcp-lease-time) with
+        # use_option=False; without stripping current_object the length
+        # check always reports changed when the playbook omits the options key.
+        if 'options' in proposed_object:
             proposed_object['options'] = [
                 option for option in proposed_object['options']
+                if option.get('use_option', True)
+            ]
+        if current_object and current_object.get('options'):
+            current_object['options'] = [
+                option for option in current_object['options']
                 if option.get('use_option', True)
             ]
 

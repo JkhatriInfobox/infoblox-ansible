@@ -225,6 +225,8 @@ def options(module):
     set in the structure but does not validate the values are equal.
     The remainder of the value validation is performed by WAPI
     '''
+    if not module.params['options']:
+        return module.params['options']
     special_options = ['routers', 'router-templates', 'domain-name-servers',
                        'domain-name', 'broadcast-address', 'broadcast-address-offset',
                        'dhcp-lease-time', 'dhcp6.name-servers']
@@ -290,7 +292,7 @@ def main():
         network=dict(),
         network_view=dict(default='default'),
 
-        options=dict(type='list', elements='dict', options=option_spec, transform=options),
+        options=dict(type='list', elements='dict', options=option_spec, transform=options, default=[]),
 
         extattrs=dict(type='dict'),
         comment=dict(type='str')
