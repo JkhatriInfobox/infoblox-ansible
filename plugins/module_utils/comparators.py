@@ -86,6 +86,10 @@ def _adjust_host_ipv4_subitem(subitem, current_item):
     import copy
     subitem = copy.copy(subitem)
 
+    # use_for_ea_inheritance is handled separately in post_update and is not
+    # returned by the standard GET — remove it before subset comparison.
+    subitem.pop('use_for_ea_inheritance', None)
+
     if current_item:
         current_config = current_item[0]
         dhcp_flag = current_config.get('configure_for_dhcp', False)

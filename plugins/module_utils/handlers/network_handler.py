@@ -18,12 +18,21 @@ class NetworkHandler(BaseObjectHandler):
         if ib_obj_type in (NIOS_IPV4_NETWORK, NIOS_IPV6_NETWORK):
             proposed_object = convert_members_to_struct(proposed_object)
 
-        # Remove use_options=False entries
-        if proposed_object.get('options'):
-            proposed_object['options'] = [
-                option for option in proposed_object['options']
-                if option.get('use_option', True)
-            ]
+        # Mirror original api.py behaviour: strip use_option=False entries from
+        # BOTH proposed and current before the comparison.  WAPI returns default
+        # options (e.g. dhcp-lease-time) with use_option=False; without this the
+        # compare always sees a mismatch when the playbook omits `options`.
+        if proposed_object.get('options') or current_object.get('options'):
+            if proposed_object.get('options'):
+                proposed_object['options'] = [
+                    opt for opt in proposed_object['options']
+                    if opt.get('use_option', True)
+                ]
+            if current_object.get('options'):
+                current_object['options'] = [
+                    opt for opt in current_object['options']
+                    if opt.get('use_option', True)
+                ]
 
         return proposed_object
 

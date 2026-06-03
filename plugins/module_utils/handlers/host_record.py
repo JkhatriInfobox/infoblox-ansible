@@ -25,6 +25,10 @@ class HostRecordHandler(BaseObjectHandler):
 
     def post_prepare(self, proposed_object, current_object, ib_obj_type):
         """Handle configure_for_dns bypass and ipv4addrs idempotency."""
+        # Strip fields unsupported by WAPI 2.13 from the proposed payload too.
+        for f in self._UNSUPPORTED_RETURN_FIELDS:
+            proposed_object.pop(f, None)
+
         # If configure_by_dns is False and view is 'default', remove the default dns view
         if not proposed_object.get('configure_for_dns') and proposed_object.get('view') == 'default':
             proposed_object.pop('view', None)
@@ -143,6 +147,13 @@ class HostRecordHandler(BaseObjectHandler):
                 del proposed_object['ipv4addrs'][0]['remove']
         return update, proposed_object
 
+    # Fields present in ib_spec that are not valid return_fields on WAPI 2.13.
+    _UNSUPPORTED_RETURN_FIELDS = frozenset(['use_dns_ea_inheritance'])
+
+    def _build_return_fields(self, ib_spec):
+        """Build return_fields list, excluding fields unsupported by WAPI 2.13."""
+        return [f for f in ib_spec.keys() if f not in self._UNSUPPORTED_RETURN_FIELDS]
+
     def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Custom object ref lookup for host records."""
 
@@ -151,7 +162,7 @@ class HostRecordHandler(BaseObjectHandler):
 
         if 'name' not in obj_filter:
             return wapi.get_object('record:host', obj_filter.copy(),
-                                   return_fields=list(ib_spec.keys())), update, new_name
+                                   return_fields=self._build_return_fields(ib_spec)), update, new_name
 
         # Check for old_name/new_name rename
         try:
@@ -162,17 +173,7 @@ class HostRecordHandler(BaseObjectHandler):
             old_name = None
             new_name = None
 
-        return_fields = list(ib_spec.keys())
-        # Add ipv4addrs/ipv6addrs sub-fields
-        ipv4addrs_return = [
-            'ipv4addrs.ipv4addr', 'ipv4addrs.mac', 'ipv4addrs.configure_for_dhcp', 'ipv4addrs.host',
-            'ipv4addrs.nextserver', 'ipv4addrs.use_nextserver', 'ipv4addrs.use_for_ea_inheritance'
-        ]
-        ipv6addrs_return = [
-            'ipv6addrs.ipv6addr', 'ipv6addrs.duid', 'ipv6addrs.configure_for_dhcp', 'ipv6addrs.host'
-        ]
-        return_fields.extend(ipv4addrs_return)
-        return_fields.extend(ipv6addrs_return)
+        return_fields = self._build_return_fields(ib_spec)
 
         if old_name and new_name:
             if not obj_filter.get('configure_for_dns', True):
