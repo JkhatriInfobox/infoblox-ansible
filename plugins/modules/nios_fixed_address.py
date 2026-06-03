@@ -268,6 +268,8 @@ def validate_ip_addr_type(ip, arg_spec, module):
             raise ValueError("the 'duid' of the object must be specified")
         module.params['duid'] = module.params['duid'].lower()
         return NIOS_IPV6_FIXED_ADDRESS, arg_spec, module
+    else:
+        module.fail_json(msg="Invalid IP address '%s': must be a valid IPv4 or IPv6 address" % ip)
 
 
 def main():

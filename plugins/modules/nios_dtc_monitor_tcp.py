@@ -131,7 +131,7 @@ def main():
 
     ib_spec = dict(
         name=dict(required=True, ib_req=True),
-        port=dict(type='int', required=True, ib_req=True),
+        port=dict(type='int', required=True),
 
         interval=dict(type='int', default=5),
         retry_down=dict(type='int', default=1),

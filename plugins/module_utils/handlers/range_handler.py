@@ -54,9 +54,9 @@ class RangeHandler(BaseObjectHandler):
         ib_obj = wapi.get_object('range', obj_filter.copy(), return_fields=return_fields)
 
         # Restore the keys
-        if new_start:
+        if new_start is not None:
             ib_spec['new_start_addr'] = new_start
-        if new_end:
+        if new_end is not None:
             ib_spec['new_end_addr'] = new_end
 
         # Validate range exists for updates

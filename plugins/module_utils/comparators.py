@@ -125,7 +125,7 @@ def _issubset(item, objects):
         else:
             if item in obj:
                 return True
-    return None
+    return False
 
 
 def _compare_extattrs(current_extattrs, proposed_extattrs):

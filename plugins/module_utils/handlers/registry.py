@@ -36,13 +36,15 @@ def _init_registry():
         NIOS_IPV4_NETWORK_CONTAINER, NIOS_IPV6_NETWORK_CONTAINER,
         NIOS_IPV4_FIXED_ADDRESS, NIOS_IPV6_FIXED_ADDRESS,
         NIOS_VLAN, NIOS_EXTENSIBLE_ATTRIBUTE, NIOS_PTR_RECORD,
-        NIOS_SRV_RECORD, NIOS_NAPTR_RECORD,
+        NIOS_SRV_RECORD, NIOS_NAPTR_RECORD, NIOS_CNAME_RECORD, NIOS_MX_RECORD,
     )
 
     _HANDLER_REGISTRY.update({
         NIOS_HOST_RECORD: HostRecordHandler(),
         NIOS_A_RECORD: ARecordHandler(),
         NIOS_AAAA_RECORD: DnsRecordHandler(),
+        NIOS_CNAME_RECORD: DnsRecordHandler(),
+        NIOS_MX_RECORD: DnsRecordHandler(),
         NIOS_TXT_RECORD: TxtRecordHandler(),
         NIOS_MEMBER: MemberHandler(),
         NIOS_ZONE: ZoneHandler(),

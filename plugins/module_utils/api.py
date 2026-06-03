@@ -186,7 +186,7 @@ class WapiModule(WapiBase):
         # Post-prepare: type-specific normalization
         try:
             proposed_object = handler.post_prepare(proposed_object, current_object, ib_obj_type)
-        except AnsibleError as exc:
+        except Exception as exc:
             self.module.fail_json(msg=to_native(exc))
             return result
 
@@ -249,7 +249,8 @@ class WapiModule(WapiBase):
                 if 'ipv4addrs' in proposed_object and 'remove' in proposed_object['ipv4addrs'][0]:
                     if hasattr(handler, '_check_if_add_remove_ip_arg_exists'):
                         handler._check_if_add_remove_ip_arg_exists(proposed_object)
-                        self.update_object(ref, proposed_object)
+                        if not self.module.check_mode:
+                            self.update_object(ref, proposed_object)
                         result['changed'] = True
                 elif not self.module.check_mode:
                     delete_ref = handler.pre_delete(self, ref, proposed_object)

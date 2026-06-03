@@ -24,8 +24,10 @@ class ZoneHandler(BaseObjectHandler):
 
         ib_obj = wapi.get_object('zone_auth', obj_filter.copy(), return_fields=return_fields)
 
-        # Reinstate restart_if_needed if no object found
-        if not ib_obj and temp is not None:
+        # Always reinstate restart_if_needed so prepare_proposed includes it.
+        # Previously this was only reinstated when the object was not found,
+        # silently dropping the field on every zone update.
+        if temp is not None:
             ib_spec['restart_if_needed'] = temp
 
         return ib_obj, update, new_name

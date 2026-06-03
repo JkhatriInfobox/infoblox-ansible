@@ -71,10 +71,10 @@ class MemberHandler(BaseObjectHandler):
         return ib_obj, update, new_name
 
     def pre_update(self, wapi, ref, proposed_object, current_object, ib_spec, module, ib_obj_type):
-        """Handle create_token function call and normal member updates."""
-        # If create_token is True, call the function instead of updating
-        if proposed_object.get("create_token") is True:
-            return 'create_token', ref  # Signal to call func instead of update
+        """Handle normal member updates.
 
+        Note: the create_token=True path is short-circuited in api.py run()
+        before pre_update is ever called, so there is no need to handle it here.
+        """
         proposed_object = self.on_update(proposed_object, ib_spec)
         return ref, proposed_object

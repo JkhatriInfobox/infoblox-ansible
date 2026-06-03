@@ -94,7 +94,7 @@ class ARecordHandler(BaseObjectHandler):
                 ib_obj = wapi.get_object('record:a', test_obj_filter, return_fields=return_fields)
                 if ib_obj:
                     obj_filter['name'] = new_name
-                elif old_ipv4addr_exists and len(ib_obj) == 0:
+                elif old_ipv4addr_exists and not ib_obj:
                     raise Exception(
                         "object with name: '%s', ipv4addr: '%s' is not found" % (old_name, test_obj_filter.get('ipv4addr')))
                 else:
