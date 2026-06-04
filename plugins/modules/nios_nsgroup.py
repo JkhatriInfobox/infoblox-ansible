@@ -255,7 +255,7 @@ options:
       - Allows for the configuration of Extensible Attributes on the
         instance of the object.  This argument accepts a set of key / value
         pairs for configuration.
-    type: str
+    type: dict
   comment:
     description:
       - Configures a text string comment to be associated with the instance

@@ -38,7 +38,12 @@ class NetworkHandler(BaseObjectHandler):
 
     def get_object_ref(self, wapi, module, ib_obj_type, obj_filter, ib_spec):
         """Custom lookup that removes template and container-invalid fields."""
-        from ..connector import NIOS_IPV4_NETWORK_CONTAINER, NIOS_IPV6_NETWORK_CONTAINER
+        from ..connector import (
+            NIOS_IPV4_NETWORK_CONTAINER,
+            NIOS_IPV6_NETWORK_CONTAINER,
+            NIOS_IPV4_NETWORK,
+            NIOS_IPV6_NETWORK,
+        )
 
         update = False
         new_name = None
@@ -55,6 +60,25 @@ class NetworkHandler(BaseObjectHandler):
 
         return_fields = list(ib_spec.keys())
         ib_obj = wapi.get_object(ib_obj_type, obj_filter.copy(), return_fields=return_fields)
+
+        # For delete operations with implicit default view, perform a second
+        # lookup without network_view to detect cross-view ambiguity and support
+        # single-object deletion when the default view filter misses.
+        if (module.params.get('state') == 'absent' and
+                obj_filter.get('network_view') == 'default' and
+                ib_obj_type in (NIOS_IPV4_NETWORK, NIOS_IPV6_NETWORK)):
+            fallback_filter = obj_filter.copy()
+            fallback_filter.pop('network_view', None)
+            fallback_ib_obj = wapi.get_object(ib_obj_type, fallback_filter, return_fields=return_fields)
+            if fallback_ib_obj and len(fallback_ib_obj) > 1:
+                views = sorted(set(obj.get('network_view', 'unknown') for obj in fallback_ib_obj))
+                module.fail_json(
+                    msg="Multiple networks with CIDR '%s' exist in network views: %s. "
+                        "Set network_view explicitly for state=absent."
+                        % (obj_filter.get('network'), ', '.join(views))
+                )
+            if not ib_obj and fallback_ib_obj:
+                ib_obj = fallback_ib_obj
 
         # Reinstate template
         if temp_template is not None:

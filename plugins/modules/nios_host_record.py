@@ -418,6 +418,27 @@ def ipv6addrs(module):
     return ipaddr(module, 'ipv6addrs', filtered_keys=['address', 'dhcp'])
 
 
+def supports_dns_ea_inheritance(wapi_version):
+    '''Return True if the given WAPI version supports use_dns_ea_inheritance.'''
+    parts = wapi_version.split('.')
+    try:
+        major, minor = int(parts[0]), int(parts[1])
+        patch = int(parts[2]) if len(parts) >= 3 else 0
+    except (IndexError, ValueError):
+        return False
+
+    if major != 2:
+        return major > 2
+
+    min_patch = {12: 3, 13: 4}.get(minor, 0 if minor > 13 else None)
+    return min_patch is not None and patch >= min_patch
+
+
+def should_warn_ignored_dns_ea_inheritance(wapi_version, use_dns_ea_inheritance):
+    '''Return True if use_dns_ea_inheritance is enabled on unsupported WAPI.'''
+    return not supports_dns_ea_inheritance(wapi_version) and bool(use_dns_ea_inheritance)
+
+
 def main():
     ''' Main entry point for module execution
     '''
@@ -458,8 +479,20 @@ def main():
     module = AnsibleModule(argument_spec=argument_spec,
                            supports_check_mode=True)
 
+    effective_ib_spec = ib_spec.copy()
+    provider_wapi_version = (module.params.get('provider') or {}).get('wapi_version', '2.12.3')
+    if not supports_dns_ea_inheritance(provider_wapi_version):
+        if should_warn_ignored_dns_ea_inheritance(provider_wapi_version,
+                                                  module.params.get('use_dns_ea_inheritance')):
+            module.warn(
+                'use_dns_ea_inheritance is not supported with WAPI version %s. '
+                'Minimum supported versions are 2.12.3 and 2.13.4. '
+                'The field will be ignored.' % provider_wapi_version
+            )
+        effective_ib_spec.pop('use_dns_ea_inheritance', None)
+
     wapi = WapiModule(module)
-    result = wapi.run(NIOS_HOST_RECORD, ib_spec)
+    result = wapi.run(NIOS_HOST_RECORD, effective_ib_spec)
 
     module.exit_json(**result)
 

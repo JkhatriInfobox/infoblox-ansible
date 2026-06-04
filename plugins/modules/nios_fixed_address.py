@@ -294,7 +294,7 @@ def main():
         network=dict(),
         network_view=dict(default='default'),
 
-        options=dict(type='list', elements='dict', options=option_spec, transform=options, default=[]),
+        options=dict(type='list', elements='dict', options=option_spec, transform=options),
 
         extattrs=dict(type='dict'),
         comment=dict(type='str')

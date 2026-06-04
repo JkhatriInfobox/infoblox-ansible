@@ -61,3 +61,12 @@ homepage: https://github.com/infobloxopen/infoblox-ansible
 
 # The URL to the collection issue tracker
 issues: https://github.com/infobloxopen/infoblox-ansible/issues
+
+build_ignore:
+  - .venv
+  - .forge
+  - .ai
+  - .github
+  - .pytest_cache
+  - __pycache__
+  - "*.tar.gz"

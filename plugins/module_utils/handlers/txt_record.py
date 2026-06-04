@@ -19,7 +19,7 @@ class TxtRecordHandler(BaseObjectHandler):
         if 'text' in proposed_object:
             text_obj = proposed_object['text']
             if isinstance(text_obj, str) and text_obj.startswith("{"):
-                txt, _ = parse_txt_field(text_obj)
+                txt = parse_txt_field(text_obj)[0]
                 proposed_object['text'] = txt
         return proposed_object
 

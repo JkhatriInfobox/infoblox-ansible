@@ -44,11 +44,12 @@ def _compare_list(key, current_item, proposed_item, ib_obj_type):
             return False
         return True
 
-    # Length check for specific list fields
+    # Content-equality check for specific list fields (order-insensitive)
     length_check_keys = ('monitors', 'members', 'options', 'delegate_to',
                          'forwarding_servers', 'stub_members', 'ssh_keys', 'vlans')
-    if key in length_check_keys and len(proposed_item) != len(current_item):
-        return False
+    if key in length_check_keys:
+        if not _verify_list_content_equality(proposed_item, current_item):
+            return False
 
     # Special handling for auth_zones in DTC LBDN
     if key == 'auth_zones' and ib_obj_type == NIOS_DTC_LBDN:
@@ -108,6 +109,33 @@ def _verify_list_order(proposed_data, current_data):
     """Check if two lists have the same elements in the same order."""
     return len(proposed_data) == len(current_data) and all(
         a == b for a, b in zip(proposed_data, current_data))
+
+
+def _verify_list_content_equality(proposed_data, current_data):
+    """Verify proposed list items are present in current list regardless of order.
+
+    Each proposed item must match a distinct current item (multiset semantics).
+    Dict items match via subset comparison (proposed entries subset of current).
+    Non-dict items match via equality.
+    """
+    if len(proposed_data) != len(current_data):
+        return False
+    unmatched = list(current_data)
+    for proposed_item in proposed_data:
+        matched_idx = -1
+        for idx, current_item in enumerate(unmatched):
+            if isinstance(proposed_item, dict):
+                if isinstance(current_item, dict) and all(
+                        entry in current_item.items() for entry in proposed_item.items()):
+                    matched_idx = idx
+                    break
+            elif proposed_item == current_item:
+                matched_idx = idx
+                break
+        if matched_idx < 0:
+            return False
+        unmatched.pop(matched_idx)
+    return True
 
 
 def _issubset(item, objects):

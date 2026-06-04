@@ -75,11 +75,61 @@
         provider: "{{ nios_provider }}"
       register: c6
 
-    - name: Cleanup ipv6
+    - name: Re-create ipv6 network (idempotent)
+      infoblox.nios_modules.nios_network:
+        network: "{{ net6 }}"
+        comment: this is a test comment
+        state: present
+        provider: "{{ nios_provider }}"
+      register: c6b
+
+    - name: Delete ipv6 network
       infoblox.nios_modules.nios_network:
         network: "{{ net6 }}"
         state: absent
         provider: "{{ nios_provider }}"
+      register: d6
+
+    - name: Re-delete ipv6 network (idempotent)
+      infoblox.nios_modules.nios_network:
+        network: "{{ net6 }}"
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: d6b
+
+    - name: Create ipv4 network container
+      infoblox.nios_modules.nios_network:
+        network: 192.168.112.0/24
+        container: true
+        comment: test container
+        state: present
+        provider: "{{ nios_provider }}"
+      register: cc1
+
+    - name: Re-create ipv4 network container (idempotent)
+      infoblox.nios_modules.nios_network:
+        network: 192.168.112.0/24
+        container: true
+        comment: test container
+        state: present
+        provider: "{{ nios_provider }}"
+      register: cc2
+
+    - name: Delete ipv4 network container
+      infoblox.nios_modules.nios_network:
+        network: 192.168.112.0/24
+        container: true
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: cd1
+
+    - name: Re-delete ipv4 network container (idempotent)
+      infoblox.nios_modules.nios_network:
+        network: 192.168.112.0/24
+        container: true
+        state: absent
+        provider: "{{ nios_provider }}"
+      register: cd2
 
     - name: Assert idempotence and changes
       ansible.builtin.assert:
@@ -91,5 +141,12 @@
           - d1.changed
           - not d2.changed
           - c6.changed
+          - not c6b.changed
+          - d6.changed
+          - not d6b.changed
+          - cc1.changed
+          - not cc2.changed
+          - cd1.changed
+          - not cd2.changed
         success_msg: "nios_network matrix PASSED"
         fail_msg: "nios_network matrix FAILED"

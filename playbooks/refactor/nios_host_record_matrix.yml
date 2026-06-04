@@ -94,6 +94,34 @@
         state: absent
         provider: "{{ nios_provider }}"
 
+    - name: Create host record with use_dns_ea_inheritance=true (supported WAPI)
+      infoblox.nios_modules.nios_host_record:
+        name: ea-inherit.ansible-refactor.com
+        ipv4:
+          - address: 192.168.10.5
+        configure_for_dns: true
+        use_dns_ea_inheritance: true
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create_ea1
+
+    - name: Re-create host record with use_dns_ea_inheritance=true (idempotent)
+      infoblox.nios_modules.nios_host_record:
+        name: ea-inherit.ansible-refactor.com
+        ipv4:
+          - address: 192.168.10.5
+        configure_for_dns: true
+        use_dns_ea_inheritance: true
+        state: present
+        provider: "{{ nios_provider }}"
+      register: create_ea2
+
+    - name: Cleanup ea-inheritance host
+      infoblox.nios_modules.nios_host_record:
+        name: ea-inherit.ansible-refactor.com
+        state: absent
+        provider: "{{ nios_provider }}"
+
     - name: Cleanup prereq network
       infoblox.nios_modules.nios_network:
         network: 192.168.10.0/24
@@ -116,5 +144,7 @@
           - not delete2.changed
           - create3.changed
           - not create4.changed
+          - create_ea1.changed
+          - not create_ea2.changed
         success_msg: "nios_host_record matrix PASSED"
         fail_msg: "nios_host_record matrix FAILED"

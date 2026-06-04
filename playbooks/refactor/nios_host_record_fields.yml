@@ -149,6 +149,46 @@
         provider: "{{ nios_provider }}"
       register: delete2
 
+    - name: Pre-cleanup ea-inheritance host
+      infoblox.nios_modules.nios_host_record:
+        name: rf-host-ea.example.com
+        state: absent
+        provider: "{{ nios_provider }}"
+
+    - name: Create host record with use_for_ea_inheritance per-IP
+      infoblox.nios_modules.nios_host_record:
+        name: rf-host-ea.example.com
+        view: default
+        ipv4addrs:
+          - ipv4addr: 192.168.99.31
+            mac: "00:50:56:01:00:02"
+            configure_for_dhcp: false
+            use_for_ea_inheritance: true
+        comment: ea-inherit-test
+        state: present
+        provider: "{{ nios_provider }}"
+      register: ea_create1
+
+    - name: Re-create with use_for_ea_inheritance — idempotent
+      infoblox.nios_modules.nios_host_record:
+        name: rf-host-ea.example.com
+        view: default
+        ipv4addrs:
+          - ipv4addr: 192.168.99.31
+            mac: "00:50:56:01:00:02"
+            configure_for_dhcp: false
+            use_for_ea_inheritance: true
+        comment: ea-inherit-test
+        state: present
+        provider: "{{ nios_provider }}"
+      register: ea_create2
+
+    - name: Cleanup ea-inheritance host
+      infoblox.nios_modules.nios_host_record:
+        name: rf-host-ea.example.com
+        state: absent
+        provider: "{{ nios_provider }}"
+
     - name: Assert all field operations
       ansible.builtin.assert:
         that:
@@ -160,5 +200,7 @@
           - not update4.changed
           - delete1.changed
           - not delete2.changed
+          - ea_create1.changed
+          - not ea_create2.changed
         success_msg: "nios_host_record fields PASSED"
         fail_msg: "nios_host_record fields FAILED"

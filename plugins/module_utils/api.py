@@ -6,7 +6,7 @@ __metaclass__ = type
 # still belong to the author of the module, and may assign their own license
 # to the complete work.
 #
-#  2020 Infoblox IncCopyright 
+# Copyright © 2020 Infoblox Inc
 #
 # Redistribution and use in source and binary forms, with or without modification,
 # are permitted provided that the following conditions are met:
@@ -42,7 +42,7 @@ except ImportError:
 
 # Re-export all constants and utilities from their new modules for backward compatibility.
 # Any module importing from api.py continues to work unchanged.
-from .connector import (                               # noqa: F401
+from .connector import (                               # noqa: F401  # pylint: disable=unused-import
     NIOS_DNS_VIEW, NIOS_NETWORK_VIEW, NIOS_HOST_RECORD,
     NIOS_IPV4_NETWORK, NIOS_RANGE, NIOS_IPV6_NETWORK, NIOS_ZONE,
     NIOS_PTR_RECORD, NIOS_A_RECORD, NIOS_AAAA_RECORD, NIOS_CNAME_RECORD,
@@ -57,7 +57,7 @@ from .connector import (                               # noqa: F401
     NIOS_DTC_MONITOR_TCP, NIOS_DTC_TOPOLOGY, NIOS_EXTENSIBLE_ATTRIBUTE,
     NIOS_VLAN, NIOS_ADMINUSER, NIOS_PROVIDER_SPEC, get_connector,
 )
-from .transforms import (                              # noqa: F401
+from .transforms import (                              # noqa: F401  # pylint: disable=unused-import
     normalize_extattrs, flatten_extattrs, member_normalize,
     convert_members_to_struct, convert_ea_list_to_struct, normalize_ib_spec,
 )
@@ -123,11 +123,21 @@ class WapiModule(WapiBase):
 
     def handle_exception(self, method_name, exc):
         """Gracefully fail the module on InfobloxException."""
-        if ('text' in exc.response):
+        response = getattr(exc, 'response', None) or {}
+
+        # For state=absent deletes, treat NotFound as idempotent success.
+        if method_name == 'delete_object' and self.module.params.get('state') == 'absent':
+            code = to_text(response.get('code', '')).lower()
+            error = to_text(response.get('Error', '')).lower()
+            text = to_text(response.get('text', '')).lower()
+            if 'notfound' in code or 'datanotfound' in code or 'notfound' in error or 'not found' in text:
+                return
+
+        if ('text' in response):
             self.module.fail_json(
-                msg=exc.response['text'],
-                type=exc.response['Error'].split(':')[0],
-                code=exc.response.get('code'),
+                msg=response['text'],
+                type=response['Error'].split(':')[0],
+                code=response.get('code'),
                 operation=method_name
             )
         else:
@@ -282,7 +292,7 @@ class WapiModule(WapiBase):
             self.create_object(ib_obj_type, proposed_object)
 
     # -------------------------------------------------------------------------
-    # Legacy compatibility  kept for any code referencing them directlymethods 
+    # Legacy compatibility methods kept for any code referencing them directly
     # -------------------------------------------------------------------------
 
     def on_update(self, proposed_object, ib_spec):
