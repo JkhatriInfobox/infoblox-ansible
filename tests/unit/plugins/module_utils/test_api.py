@@ -439,3 +439,93 @@ class TestNiosApi(unittest.TestCase):
         called_kwargs = wapi.connector.get_object.call_args.kwargs
         self.assertIn('return_fields', called_kwargs)
         self.assertNotIn('password', called_kwargs['return_fields'])
+
+    def test_post_fetch_result_object_populated_on_create(self):
+        self.module.params = {"provider": {}, "state": "present", "name": "new-host", "comment": None}
+        test_spec = {"name": {"ib_req": True}, "comment": {}}
+        wapi = api.WapiModule(self.module)
+        wapi.get_object = Mock(return_value=None)
+        wapi.create_object = Mock(return_value="record:a/abc123")
+        wapi.update_object = Mock()
+        wapi.delete_object = Mock()
+        wapi.connector.get_object = Mock(return_value={"_ref": "record:a/abc123", "name": "new-host"})
+        res = wapi.run("testobject", test_spec)
+        self.assertTrue(res["changed"])
+        self.assertIn("object", res)
+        self.assertEqual(res["object"]["_ref"], "record:a/abc123")
+
+    def test_post_fetch_result_object_populated_on_update(self):
+        ref = "testobject/ZG5z:existing/default"
+        self.module.params = {"provider": {}, "state": "present", "name": "host", "comment": "updated"}
+        test_object = [{"_ref": ref, "name": "host", "comment": "old"}]
+        test_spec = {"name": {"ib_req": True}, "comment": {}}
+        wapi = api.WapiModule(self.module)
+        wapi.get_object = Mock(return_value=test_object)
+        wapi.create_object = Mock()
+        wapi.update_object = Mock(return_value=ref)
+        wapi.delete_object = Mock()
+        wapi.connector.get_object = Mock(return_value={"_ref": ref, "comment": "updated"})
+        res = wapi.run("testobject", test_spec)
+        self.assertTrue(res["changed"])
+        self.assertIn("object", res)
+        self.assertEqual(res["object"]["comment"], "updated")
+
+    def test_post_fetch_skipped_for_nios_member(self):
+        self.module.params = {"provider": {}, "state": "present", "name": "member.grid.example.com", "create_token": False}
+        test_spec = {"name": {"ib_req": True}, "create_token": {}}
+        wapi = api.WapiModule(self.module)
+        wapi.get_object = Mock(return_value=None)
+        wapi.create_object = Mock(return_value="member/abc123")
+        wapi.update_object = Mock()
+        wapi.delete_object = Mock()
+        wapi.connector.get_object = Mock()
+        res = wapi.run(api.NIOS_MEMBER, test_spec)
+        self.assertTrue(res["changed"])
+        self.assertNotIn("object", res)
+        wapi.connector.get_object.assert_not_called()
+
+    def test_post_fetch_skipped_in_check_mode(self):
+        self.module.check_mode = True
+        self.module.params = {"provider": {}, "state": "present", "name": "dryrun", "comment": None}
+        test_spec = {"name": {"ib_req": True}, "comment": {}}
+        wapi = api.WapiModule(self.module)
+        wapi.get_object = Mock(return_value=None)
+        wapi.create_object = Mock()
+        wapi.update_object = Mock()
+        wapi.delete_object = Mock()
+        wapi.connector.get_object = Mock()
+        res = wapi.run("testobject", test_spec)
+        self.assertTrue(res["changed"])
+        self.assertNotIn("object", res)
+        wapi.connector.get_object.assert_not_called()
+        wapi.create_object.assert_not_called()
+
+    def test_post_fetch_warns_on_connector_error(self):
+        self.module.params = {"provider": {}, "state": "present", "name": "new-host", "comment": None}
+        test_spec = {"name": {"ib_req": True}, "comment": {}}
+        wapi = api.WapiModule(self.module)
+        wapi.get_object = Mock(return_value=None)
+        wapi.create_object = Mock(return_value="record:a/abc123")
+        wapi.update_object = Mock()
+        wapi.delete_object = Mock()
+        wapi.connector.get_object = Mock(side_effect=Exception("WAPI timeout"))
+        res = wapi.run("testobject", test_spec)
+        self.assertTrue(res["changed"])
+        self.assertNotIn("object", res)
+        self.module.warn.assert_called_once()
+        self.assertIn("post-write object fetch failed", self.module.warn.call_args[0][0])
+
+    def test_post_fetch_excludes_members_and_vlans_from_return_fields(self):
+        self.module.params = {"provider": {}, "state": "present", "name": "net", "members": [], "vlans": []}
+        test_spec = {"name": {"ib_req": True}, "members": {}, "vlans": {}}
+        wapi = api.WapiModule(self.module)
+        wapi.get_object = Mock(return_value=None)
+        wapi.create_object = Mock(return_value="testobject/net-ref")
+        wapi.update_object = Mock()
+        wapi.delete_object = Mock()
+        wapi.connector.get_object = Mock(return_value={"_ref": "testobject/net-ref"})
+        res = wapi.run("testobject", test_spec)
+        self.assertTrue(res["changed"])
+        called_kwargs = wapi.connector.get_object.call_args.kwargs
+        self.assertNotIn("members", called_kwargs.get("return_fields", []))
+        self.assertNotIn("vlans", called_kwargs.get("return_fields", []))

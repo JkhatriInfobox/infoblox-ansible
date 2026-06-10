@@ -108,6 +108,8 @@ NIOS_RETURN_FIELDS_EXCLUDE = frozenset({
     'new_end_addr',        # nios_range
     'create_token',        # nios_member
     'password',            # nios_adminuser - WAPI rejects GET return_fields+=password
+    'members',            # nios_network - WAPI rejects GET return_fields+=members
+    'vlans',              # nios_network - WAPI rejects GET return_fields+=vlans
 })
 
 NIOS_PROVIDER_SPEC = {
@@ -585,7 +587,10 @@ class WapiModule(WapiBase):
                         if ('add' or 'remove') in proposed_object['ipv4addrs'][0]:
                             run_update, proposed_object = self.check_if_add_remove_ip_arg_exists(proposed_object)
                             if run_update:
-                                res = self.update_object(ref, proposed_object)
+                                if not self.module.check_mode:
+                                    res = self.update_object(ref, proposed_object)
+                                else:
+                                    res = ref
                                 result['changed'] = True
                             else:
                                 res = ref
@@ -682,10 +687,10 @@ class WapiModule(WapiBase):
                         result['object'] = (
                             fetched[0] if isinstance(fetched, list) else fetched
                         )
-                except Exception:
-                    # Never fail the task because the post-fetch failed; the
-                    # create/update itself already succeeded server-side.
-                    pass
+                except Exception as fetch_exc:
+                    self.module.warn(
+                        "post-write object fetch failed for %s: %s" % (ib_obj_type, fetch_exc)
+                    )
 
         return result
 
