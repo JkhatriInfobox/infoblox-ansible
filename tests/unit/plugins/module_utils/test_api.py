@@ -1044,3 +1044,45 @@ class TestNiosApi(unittest.TestCase):
 
         self.assertTrue(res['changed'])
         wapi.update_object.assert_not_called()
+
+    def test_post_fetch_normalizes_wapi_2_14_dict_response(self):
+        # WAPI 2.14+ returns {_ref, uuid} dict on create/update; post-fetch
+        # must extract _ref before using it for GET. (issue #305, NPA-1964)
+        self.module.params = {
+            'provider': {}, 'state': 'present',
+            'name': 'server.com', 'host': '2.2.2.2', 'comment': None, 'extattrs': None,
+        }
+        test_spec = {
+            'name': {'ib_req': True},
+            'host': {'ib_req': True},
+            'comment': {},
+            'extattrs': {},
+        }
+        dict_ref = 'dtc:server/ZG5z:server.com'
+        create_response = {
+            '_ref': dict_ref,
+            'uuid': 'c656e2c8abea46af9f4108e378ff2e2a',
+        }
+        fetched_object = {
+            '_ref': dict_ref,
+            'name': 'server.com',
+            'host': '2.2.2.2',
+            'comment': None,
+            'extattrs': {},
+        }
+
+        wapi = api.WapiModule(self.module)
+        wapi.get_object = Mock(return_value=None)
+        wapi.create_object = Mock(return_value=create_response)
+        wapi.update_object = Mock()
+        wapi.delete_object = Mock()
+        wapi.connector.get_object = Mock(return_value=fetched_object)
+
+        res = wapi.run('dtc:server', test_spec)
+
+        self.assertTrue(res['changed'])
+        self.assertIn('object', res)
+        self.assertEqual(res['object']['_ref'], dict_ref)
+        wapi.connector.get_object.assert_called_once()
+        call_kwargs = wapi.connector.get_object.call_args[1]
+        self.assertEqual(call_kwargs['obj_type'], dict_ref)
