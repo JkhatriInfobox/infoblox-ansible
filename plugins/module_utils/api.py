@@ -182,8 +182,24 @@ def normalize_extattrs(value):
                 value: <value>
             }
         }
+    A value may also be provided as a dict to control extensible attribute
+    inheritance, e.g.:
+        extattrs: {
+            key: {
+                value: <value>,
+                inheritance_operation: 'INHERIT' | 'OVERRIDE'
+            }
+        }
+    In that case the struct is passed through as-is, except for the read-only
+    'inheritance_source' field which WAPI returns on read but rejects on write.
     '''
-    return dict([(k, {'value': v}) for k, v in value.items()])
+    normalized = {}
+    for k, v in value.items():
+        if isinstance(v, dict):
+            normalized[k] = {ik: iv for ik, iv in v.items() if ik != 'inheritance_source'}
+        else:
+            normalized[k] = {'value': v}
+    return normalized
 
 
 def flatten_extattrs(value):
@@ -198,8 +214,24 @@ def flatten_extattrs(value):
         extattrs: {
             key: value
         }
+    When a value carries inheritance metadata (i.e. it is inherited from a
+    parent object), WAPI returns:
+        extattrs: {
+            key: {
+                value: <value>,
+                inheritance_source: { _ref: <parent> }
+            }
+        }
+    In that case the full struct is preserved so the inherited state stays
+    visible and can be compared for idempotency.
     '''
-    return dict([(k, v['value']) for k, v in value.items()])
+    flattened = {}
+    for k, v in value.items():
+        if isinstance(v, dict) and 'inheritance_source' in v:
+            flattened[k] = v
+        else:
+            flattened[k] = v['value']
+    return flattened
 
 
 def member_normalize(member_spec):
@@ -953,15 +985,35 @@ class WapiModule(WapiBase):
     def compare_extattrs(self, current_extattrs, proposed_extattrs):
         '''Compare current extensible attributes to given extensible
            attribute, if length is not equal returns false , else
-           checks the value of keys in proposed extattrs'''
+           checks the value of keys in proposed extattrs.
+
+           A proposed value may be a plain scalar (legacy behaviour) or a
+           dict controlling inheritance, e.g.
+           {'value': <v>, 'inheritance_operation': 'INHERIT' | 'OVERRIDE'}.
+           The current value may be a scalar (explicitly set) or a dict
+           carrying 'inheritance_source' (inherited from a parent).'''
         if len(current_extattrs) != len(proposed_extattrs):
             return False
-        else:
-            for key, proposed_item in proposed_extattrs.items():
-                current_item = current_extattrs.get(key)
-                if current_item != proposed_item:
+        for key, proposed_item in proposed_extattrs.items():
+            current_item = current_extattrs.get(key)
+            current_inherited = isinstance(current_item, dict) and 'inheritance_source' in current_item
+            current_value = current_item.get('value') if isinstance(current_item, dict) else current_item
+
+            if isinstance(proposed_item, dict):
+                if proposed_item.get('inheritance_operation') == 'INHERIT':
+                    # Up to date only when the value is currently inherited.
+                    if not current_inherited:
+                        return False
+                else:
+                    # Explicit value (optionally OVERRIDE): the effective value
+                    # must match and it must be explicitly set, not inherited.
+                    if current_value != proposed_item.get('value') or current_inherited:
+                        return False
+            else:
+                # Legacy flat value: compare the effective value only.
+                if current_value != proposed_item:
                     return False
-            return True
+        return True
 
     def verify_list_order(self, proposed_data, current_data):
         return len(proposed_data) == len(current_data) and all(a == b for a, b in zip(proposed_data, current_data))
@@ -1074,6 +1126,10 @@ class WapiModule(WapiBase):
                     proposed_extattrs = proposed_object.get(key)
                     if not self.compare_extattrs(current_extattrs, proposed_extattrs):
                         return False
+                    # compare_extattrs is authoritative for extensible attributes
+                    # (it understands inheritance metadata); skip the generic
+                    # recursion below which would misreport inheritance fields.
+                    continue
 
                 if self.compare_objects(current_item, proposed_item, ib_obj_type) is False:
                     return False
