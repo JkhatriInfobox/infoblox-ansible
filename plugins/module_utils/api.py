@@ -723,6 +723,9 @@ class WapiModule(WapiBase):
                 and not self.module.check_mode
                 and ib_obj_type not in NIOS_RETURN_OBJECT_EXCLUDE):
             target_ref = res if res else ref
+            # Normalize WAPI 2.14+ dict response {_ref, uuid} to bare _ref string
+            if isinstance(target_ref, dict) and '_ref' in target_ref:
+                target_ref = target_ref['_ref']
             if target_ref:
                 return_fields = sorted({
                     k for k in ib_spec.keys()
