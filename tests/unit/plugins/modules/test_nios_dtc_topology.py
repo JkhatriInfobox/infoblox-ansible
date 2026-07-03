@@ -495,7 +495,7 @@ class TestNiosDtcTopologyModule(TestNiosModule):
 
         with self.assertRaises(AnsibleFailJson):
             nios_dtc_topology.build_topology_rules(module, wapi, rules, '2.14')
-        _, kwargs = module.fail_json.call_args
+        dummy, kwargs = module.fail_json.call_args
         self.assertIn('mutually exclusive', kwargs['msg'])
 
     def test_nios_dtc_topology_destination_requires_214(self):
@@ -513,7 +513,7 @@ class TestNiosDtcTopologyModule(TestNiosModule):
 
         with self.assertRaises(AnsibleFailJson):
             nios_dtc_topology.build_topology_rules(module, wapi, rules, '2.12.3')
-        _, kwargs = module.fail_json.call_args
+        dummy, kwargs = module.fail_json.call_args
         self.assertIn('2.14', kwargs['msg'])
 
     def test_nios_dtc_topology_destination_unresolved_name_fails(self):
@@ -532,5 +532,5 @@ class TestNiosDtcTopologyModule(TestNiosModule):
 
         with self.assertRaises(AnsibleFailJson):
             nios_dtc_topology.build_topology_rules(module, wapi, rules, '2.14')
-        _, kwargs = module.fail_json.call_args
+        dummy, kwargs = module.fail_json.call_args
         self.assertIn('missing_pool', kwargs['msg'])

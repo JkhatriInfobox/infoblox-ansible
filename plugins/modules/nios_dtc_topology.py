@@ -49,13 +49,10 @@ options:
             provider so the module sends the structured destination that
             NIOS 9.1.0 expects. The option name and value are unchanged.
           - Mutually exclusive with I(destination) within the same rule.
+          - This option is deprecated and will be removed in
+            infoblox.nios_modules 2.0.0. Use I(destination) instead, which on
+            WAPI 2.14+ also supports multiple prioritized destinations.
         type: str
-        deprecated:
-          why: The legacy scalar destination_link is replaced by destination
-            on WAPI 2.14+, which also supports multiple prioritized
-            destinations.
-          alternative: destination
-          removed_in: "2.0.0"
       destination:
         description:
           - Configures a list of prioritized destinations for this DTC Topology
