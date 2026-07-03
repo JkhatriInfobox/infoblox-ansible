@@ -32,6 +32,7 @@ __metaclass__ = type
 import json
 import os
 import copy
+import logging
 from functools import partial
 from ansible.module_utils.common.text.converters import to_native
 from ansible.module_utils.common.text.converters import to_text
@@ -43,6 +44,10 @@ try:
     from infoblox_client.connector import Connector
     from infoblox_client.exceptions import InfobloxException
     HAS_INFOBLOX_CLIENT = True
+    # Suppress "No handlers could be found for logger 'infoblox_client.connector'" and the
+    # library's re-auth WARNING noise when the consuming app has not configured logging.
+    # https://github.com/infobloxopen/infoblox-ansible/issues/123
+    logging.getLogger('infoblox_client').addHandler(logging.NullHandler())
 except ImportError:
     HAS_INFOBLOX_CLIENT = False
 
@@ -305,7 +310,11 @@ class WapiBase(object):
 class WapiLookup(WapiBase):
     ''' Implements WapiBase for lookup plugins '''
     def handle_exception(self, method_name, exc):
-        response = getattr(exc, 'response', None) or {}
+        response = getattr(exc, 'response', None)
+        # The library sets ``response`` to varying types (dict, bytes, str,
+        # requests.Response); only a dict carries the parsed WAPI error fields.
+        if not isinstance(response, dict):
+            response = {}
         if 'text' in response:
             raise Exception(response['text'])
         else:
@@ -325,7 +334,11 @@ class WapiInventory(WapiBase):
         'handle_exception'" error instead of the real cause (wrong username or
         password, unreachable host, timeout, etc.).
         '''
-        response = getattr(exc, 'response', None) or {}
+        response = getattr(exc, 'response', None)
+        # Only a dict carries parsed WAPI error fields; bad credentials, for
+        # example, set ``response`` to raw bytes which must not reach ``in``.
+        if not isinstance(response, dict):
+            response = {}
         if 'text' in response:
             raise Exception(response['text']) from exc
         raise Exception(exc) from exc
@@ -353,7 +366,13 @@ class WapiModule(WapiBase):
         exception. This method will then gracefully fail the module.
         :args exc: instance of InfobloxException
         '''
-        response = getattr(exc, 'response', None) or {}
+        response = getattr(exc, 'response', None)
+        # The library sets ``response`` to varying types (dict, bytes, str,
+        # requests.Response). Only a dict carries the parsed WAPI error fields;
+        # coerce anything else to {} so the membership/``.get`` checks below are
+        # safe and a non-dict response falls back to ``to_native(exc)``.
+        if not isinstance(response, dict):
+            response = {}
 
         # For state=absent deletes, treat NotFound as idempotent success.
         if method_name == 'delete_object' and self.module.params.get('state') == 'absent':

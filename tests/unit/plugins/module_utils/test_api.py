@@ -646,6 +646,62 @@ class TestNiosApi(unittest.TestCase):
         self.assertEqual(str(cm.exception), 'bad credentials')
 
     # ------------------------------------------------------------------
+    # Issue #123 / NPA-1806 — handle_exception must not crash when the
+    # library sets exc.response to a non-dict (e.g. InfobloxBadWAPICredential
+    # sets response=response.content, which is raw bytes). The old
+    # ``getattr(exc, 'response', None) or {}`` guard only caught falsy values,
+    # so a truthy bytes/str response reached ``'text' in response`` and raised
+    # ``TypeError: a bytes-like object is required, not 'str'``.
+    # ------------------------------------------------------------------
+    def test_wapi_handle_exception_bytes_response_falls_back_to_native(self):
+        '''WapiModule must fall back to to_native(exc) when exc.response is bytes.'''
+        self.module.params = {'provider': {}, 'state': 'present'}
+        self.module.fail_json = Mock(name='fail_json')
+
+        wapi = api.WapiModule(self.module)
+        exc = Exception('bad credentials')
+        exc.response = b'<html>401 Unauthorized</html>'  # bytes, as set on 401
+
+        # Must not raise TypeError — the bug was 'text' in <bytes>.
+        wapi.handle_exception('create_object', exc)
+
+        self.module.fail_json.assert_called_once()
+        call_kwargs = self.module.fail_json.call_args[1]
+        self.assertEqual(call_kwargs.get('msg'), 'bad credentials')
+
+    def test_wapi_lookup_handle_exception_bytes_response_does_not_raise(self):
+        '''WapiLookup must wrap exc (not TypeError) when exc.response is bytes.'''
+        lookup = api.WapiLookup({})
+        exc = Exception('lookup bad credentials')
+        exc.response = b'<html>401 Unauthorized</html>'
+
+        with self.assertRaises(Exception) as cm:
+            lookup.handle_exception('get_object', exc)
+        self.assertNotIsInstance(cm.exception, TypeError)
+        self.assertIn('lookup bad credentials', str(cm.exception))
+
+    def test_wapi_inventory_handle_exception_bytes_response_falls_back(self):
+        '''WapiInventory must wrap exc (not TypeError) when exc.response is bytes.'''
+        inventory = api.WapiInventory({})
+        exc = Exception('inventory bad credentials')
+        exc.response = b'<html>401 Unauthorized</html>'
+
+        with self.assertRaises(Exception) as cm:
+            inventory.handle_exception('get_object', exc)
+        self.assertNotIsInstance(cm.exception, TypeError)
+        self.assertIn('inventory bad credentials', str(cm.exception))
+
+    def test_infoblox_client_logger_has_null_handler(self):
+        '''Importing the api module must attach a NullHandler to the
+        infoblox_client logger so library log records are dropped when the
+        consuming application has not configured logging (issue #123).'''
+        import logging
+        logger = logging.getLogger('infoblox_client')
+        self.assertTrue(
+            any(isinstance(h, logging.NullHandler) for h in logger.handlers)
+        )
+
+    # ------------------------------------------------------------------
     # convert_vlans_to_struct — direct unit tests for the new helper.
     # ------------------------------------------------------------------
 
