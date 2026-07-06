@@ -183,6 +183,101 @@ class TestNiosApi(unittest.TestCase):
         self.assertFalse(res['changed'])
         wapi.update_object.assert_not_called()
 
+    def test_normalize_extattrs_flat_and_structured(self):
+        # flat scalar -> wrapped in {'value': ...}
+        self.assertEqual(
+            api.normalize_extattrs({'Site': 'test'}),
+            {'Site': {'value': 'test'}})
+        # structured value with inheritance control is passed through as-is
+        self.assertEqual(
+            api.normalize_extattrs({'Site': {'value': 'test', 'inheritance_operation': 'INHERIT'}}),
+            {'Site': {'value': 'test', 'inheritance_operation': 'INHERIT'}})
+        # read-only inheritance_source is stripped before sending to WAPI
+        self.assertEqual(
+            api.normalize_extattrs({'Site': {'value': 'test', 'inheritance_source': {'_ref': 'x'}}}),
+            {'Site': {'value': 'test'}})
+
+    def test_flatten_extattrs_preserves_inheritance(self):
+        # plain value flattens to scalar
+        self.assertEqual(
+            api.flatten_extattrs({'Site': {'value': 'test'}}),
+            {'Site': 'test'})
+        # inherited value keeps its inheritance metadata
+        inherited = {'Site': {'value': 'test', 'inheritance_source': {'_ref': 'x'}}}
+        self.assertEqual(api.flatten_extattrs(inherited), inherited)
+
+    def test_wapi_extattrs_inheritance_override_change(self):
+        # current value is inherited; proposing an explicit value must override.
+        self.module.params = {'provider': None, 'state': 'present', 'name': 'default',
+                              'comment': 'test comment',
+                              'extattrs': {'Site': 'child-value'}}
+
+        ref = "networkview/ZG5zLm5ldHdvcmtfdmlldyQw:default/true"
+        test_object = [{
+            "comment": "test comment",
+            "_ref": ref,
+            "name": "default",
+            "extattrs": {'Site': {'value': 'parent-value',
+                                  'inheritance_source': {'_ref': 'networkcontainer/x'}}}
+        }]
+
+        test_spec = {"name": {"ib_req": True}, "comment": {}, "extattrs": {}}
+
+        wapi = self._get_wapi(test_object)
+        res = wapi.run('testobject', test_spec)
+
+        self.assertTrue(res['changed'])
+        wapi.update_object.assert_called_once()
+
+    def test_wapi_extattrs_inheritance_inherit_nochange(self):
+        # current value is already inherited; proposing INHERIT is idempotent.
+        self.module.params = {'provider': None, 'state': 'present', 'name': 'default',
+                              'comment': 'test comment',
+                              'extattrs': {'Site': {'value': 'parent-value',
+                                                    'inheritance_operation': 'INHERIT'}}}
+
+        ref = "networkview/ZG5zLm5ldHdvcmtfdmlldyQw:default/true"
+        test_object = [{
+            "comment": "test comment",
+            "_ref": ref,
+            "name": "default",
+            "extattrs": {'Site': {'value': 'parent-value',
+                                  'inheritance_source': {'_ref': 'networkcontainer/x'}}}
+        }]
+
+        test_spec = {"name": {"ib_req": True}, "comment": {}, "extattrs": {}}
+
+        wapi = self._get_wapi(test_object)
+        res = wapi.run('testobject', test_spec)
+
+        self.assertFalse(res['changed'])
+        wapi.update_object.assert_not_called()
+
+    def test_wapi_extattrs_inheritance_inherit_change(self):
+        # current value is explicitly set; proposing INHERIT must revert it.
+        self.module.params = {'provider': None, 'state': 'present', 'name': 'default',
+                              'comment': 'test comment',
+                              'extattrs': {'Site': {'value': 'parent-value',
+                                                    'inheritance_operation': 'INHERIT'}}}
+
+        ref = "networkview/ZG5zLm5ldHdvcmtfdmlldyQw:default/true"
+        test_object = [{
+            "comment": "test comment",
+            "_ref": ref,
+            "name": "default",
+            "extattrs": {'Site': {'value': 'child-value'}}
+        }]
+
+        test_spec = {"name": {"ib_req": True}, "comment": {}, "extattrs": {}}
+
+        wapi = self._get_wapi(test_object)
+        res = wapi.run('testobject', test_spec)
+
+        self.assertTrue(res['changed'])
+        # the inheritance_operation must be forwarded to WAPI on update
+        args = wapi.update_object.call_args[0]
+        self.assertEqual(args[1]['extattrs']['Site'].get('inheritance_operation'), 'INHERIT')
+
     def test_wapi_create(self):
         self.module.params = {'provider': None, 'state': 'present', 'name': 'ansible',
                               'comment': None, 'extattrs': None}
