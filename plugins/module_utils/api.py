@@ -1036,6 +1036,21 @@ class WapiModule(WapiBase):
                 return False
         return True
 
+    @staticmethod
+    def normalize_http_request(value):
+        ''' Normalize a dtc:monitor:http request value for idempotent comparison.
+
+        NIOS auto-appends '\nConnection: close\n\n' to the stored request, so a
+        read-back never matches the user-supplied value verbatim. Strip that
+        trailing header and surrounding whitespace before comparing.
+        '''
+        if not isinstance(value, str):
+            return value
+        normalized = value.rstrip()
+        if normalized.endswith('Connection: close'):
+            normalized = normalized[:-len('Connection: close')].rstrip()
+        return normalized
+
     def compare_objects(self, current_object, proposed_object, ib_obj_type=None):
         for key, proposed_item in proposed_object.items():
             current_item = current_object.get(key)
@@ -1137,7 +1152,14 @@ class WapiModule(WapiBase):
                     continue
 
             else:
-                if current_item != proposed_item:
+                # NIOS auto-appends '\nConnection: close\n\n' to the
+                # dtc:monitor:http request field, so the read-back never matches
+                # the user input verbatim. Normalize both sides before comparing
+                # to keep the module idempotent.
+                if ib_obj_type == NIOS_DTC_MONITOR_HTTP and key == 'request':
+                    if self.normalize_http_request(current_item) != self.normalize_http_request(proposed_item):
+                        return False
+                elif current_item != proposed_item:
                     return False
 
         return True
