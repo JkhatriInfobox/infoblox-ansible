@@ -287,3 +287,103 @@ class TestNiosNSGroupModule(TestNiosModule):
         })
         with self.assertRaises(AnsibleExitJson):
             nios_nsgroup.main()
+
+    # ------------------------------------------------------------------
+    # extattrs must be declared as type='dict'. Previously the spec used
+    # extattrs=dict() (no type), so AnsibleModule defaulted it to 'str' and
+    # coerced a supplied dict into its string repr, crashing later in
+    # normalize_extattrs with "'str' object has no attribute 'items'".
+    # ------------------------------------------------------------------
+
+    def test_nios_nsgroup_extattrs_declared_as_dict(self):
+        '''extattrs must be parsed as a dict, not coerced to a string.'''
+        set_module_args({
+            'name': 'test-group',
+            'state': 'present',
+            'grid_primary': [{'name': 'infoblox.member'}],
+            'extattrs': {'Site': 'Test-Ansible'},
+            'provider': {'host': '192.168.1.1', 'username': 'admin', 'password': 'admin'},
+        })
+        with self.assertRaises(AnsibleExitJson):
+            nios_nsgroup.main()
+        # main() builds the argument_spec and hands the real AnsibleModule to
+        # WapiModule(); inspect it to prove extattrs is a dict-typed argument
+        # and that a supplied dict survives parsing intact.
+        called_module = self.exec_command.call_args[0][0]
+        self.assertEqual(called_module.argument_spec['extattrs'].get('type'), 'dict')
+        self.assertEqual(called_module.params['extattrs'], {'Site': 'Test-Ansible'})
+
+    # ------------------------------------------------------------------
+    # Re-applying an nsgroup with a TSIG-secured external server must be
+    # idempotent. tsig_key is write-only (never returned on read) and WAPI
+    # stores a supplied tsig_key_name as the use_tsig_key_name flag, so a
+    # verbatim comparison wrongly reported changed=true on every re-run.
+    # ------------------------------------------------------------------
+
+    def test_nios_nsgroup_tsig_external_secondary_idempotent(self):
+        '''Identical TSIG external_secondaries must NOT trigger an update.'''
+        ref = "nsgroup/ZG5zLm5ldHdvcmtfdmlldyQw:test-group/false"
+        self.module.params = {
+            'provider': None, 'state': 'present', 'name': 'test-group',
+            'comment': None, 'grid_primary': None, 'grid_secondaries': None,
+            'external_primaries': None,
+            'external_secondaries': [
+                {'address': '192.168.100.5', 'name': 'ext-tsig-ns', 'stealth': False,
+                 'tsig_key_name': 'test-tsig-key', 'tsig_key': 'aGVsbG93b3JsZA==',
+                 'tsig_key_alg': 'HMAC-MD5'},
+            ],
+            'is_grid_default': False, 'use_external_primary': False,
+            'extattrs': None,
+        }
+        # Mirror WAPI's read-back: tsig_key is never returned and the supplied
+        # tsig_key_name surfaces as use_tsig_key_name=True.
+        test_object = [{
+            '_ref': ref,
+            'name': 'test-group',
+            'external_secondaries': [
+                {'address': '192.168.100.5', 'name': 'ext-tsig-ns', 'stealth': False,
+                 'tsig_key_alg': 'HMAC-MD5', 'use_tsig_key_name': True},
+            ],
+        }]
+        test_spec = {
+            'name': {'ib_req': True},
+            'comment': {},
+            'external_secondaries': {'type': 'list'},
+        }
+        wapi = self._get_wapi(test_object)
+        res = wapi.run(api.NIOS_NSGROUP, test_spec)
+        self.assertFalse(res['changed'])
+        wapi.update_object.assert_not_called()
+
+    def test_nios_nsgroup_tsig_external_secondary_change_detected(self):
+        '''A genuine non-TSIG change on a TSIG server must still update.'''
+        ref = "nsgroup/ZG5zLm5ldHdvcmtfdmlldyQw:test-group/false"
+        self.module.params = {
+            'provider': None, 'state': 'present', 'name': 'test-group',
+            'comment': None, 'grid_primary': None, 'grid_secondaries': None,
+            'external_primaries': None,
+            'external_secondaries': [
+                {'address': '192.168.100.9', 'name': 'ext-tsig-ns', 'stealth': False,
+                 'tsig_key_name': 'test-tsig-key', 'tsig_key': 'aGVsbG93b3JsZA==',
+                 'tsig_key_alg': 'HMAC-MD5'},
+            ],
+            'is_grid_default': False, 'use_external_primary': False,
+            'extattrs': None,
+        }
+        test_object = [{
+            '_ref': ref,
+            'name': 'test-group',
+            'external_secondaries': [
+                {'address': '192.168.100.5', 'name': 'ext-tsig-ns', 'stealth': False,
+                 'tsig_key_alg': 'HMAC-MD5', 'use_tsig_key_name': True},
+            ],
+        }]
+        test_spec = {
+            'name': {'ib_req': True},
+            'comment': {},
+            'external_secondaries': {'type': 'list'},
+        }
+        wapi = self._get_wapi(test_object)
+        res = wapi.run(api.NIOS_NSGROUP, test_spec)
+        self.assertTrue(res['changed'])
+        wapi.update_object.assert_called_once()

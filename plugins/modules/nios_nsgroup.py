@@ -255,7 +255,7 @@ options:
       - Allows for the configuration of Extensible Attributes on the
         instance of the object.  This argument accepts a set of key / value
         pairs for configuration.
-    type: str
+    type: dict
   comment:
     description:
       - Configures a text string comment to be associated with the instance
@@ -424,7 +424,7 @@ def main():
                                   transform=ext_secondaries_transform),
         is_grid_default=dict(type='bool', default=False),
         use_external_primary=dict(type='bool', default=False),
-        extattrs=dict(),
+        extattrs=dict(type='dict'),
         comment=dict(),
     )
 
