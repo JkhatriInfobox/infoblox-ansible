@@ -202,6 +202,53 @@ def normalize_extattrs(value):
     return normalized
 
 
+# nsgroup fields that hold lists of nameserver structs which may carry TSIG
+# configuration (directly or, for grid members, via preferred_primaries).
+NIOS_NSGROUP_SERVER_LISTS = (
+    'external_primaries', 'external_secondaries', 'grid_primary', 'grid_secondaries')
+
+
+def _canonicalize_tsig(server):
+    ''' Canonicalize the TSIG fields of a single nameserver struct in place.
+
+    tsig_key is write-only: WAPI never returns the key material on read and
+    Ansible masks it in output, so it must be dropped before comparison. WAPI
+    also stores a supplied tsig_key_name as the boolean use_tsig_key_name flag
+    (returning use_tsig_key_name=true rather than the name), so rewrite the
+    name to that flag to match the read-back representation.
+    '''
+    if not isinstance(server, dict):
+        return
+    server.pop('tsig_key', None)
+    if server.get('tsig_key_name'):
+        server['use_tsig_key_name'] = True
+        server.pop('tsig_key_name', None)
+
+
+def normalize_nsgroup_tsig(obj):
+    ''' Return a deep copy of an nsgroup object with TSIG fields canonicalized.
+
+    Applied to both the proposed and current objects so that a re-applied
+    nsgroup carrying TSIG-secured nameservers compares equal and stays
+    idempotent. The original object is left untouched so the create/update
+    payload still carries the real tsig_key/tsig_key_name.
+    '''
+    if not isinstance(obj, dict):
+        return obj
+    normalized = copy.deepcopy(obj)
+    for field in NIOS_NSGROUP_SERVER_LISTS:
+        servers = normalized.get(field)
+        if not isinstance(servers, list):
+            continue
+        for server in servers:
+            _canonicalize_tsig(server)
+            # grid members nest external servers under preferred_primaries.
+            if isinstance(server, dict):
+                for ext in server.get('preferred_primaries') or []:
+                    _canonicalize_tsig(ext)
+    return normalized
+
+
 def flatten_extattrs(value):
     ''' Flatten the key/value struct for extattrs
     WAPI returns extattrs field as a dict in form of:
@@ -727,7 +774,15 @@ class WapiModule(WapiBase):
             proposed_for_compare = {k: v for k, v in proposed_object.items() if k != 'password'}
         else:
             proposed_for_compare = proposed_object
-        modified = not self.compare_objects(current_object, proposed_for_compare, ib_obj_type)
+        current_for_compare = current_object
+        # TSIG key material is write-only and WAPI represents a supplied
+        # tsig_key_name as the use_tsig_key_name flag on read-back, so a
+        # verbatim comparison always reports changed=True. Canonicalize both
+        # sides (on copies) so re-applying a TSIG-secured nsgroup is idempotent.
+        if ib_obj_type == NIOS_NSGROUP:
+            proposed_for_compare = normalize_nsgroup_tsig(proposed_for_compare)
+            current_for_compare = normalize_nsgroup_tsig(current_object)
+        modified = not self.compare_objects(current_for_compare, proposed_for_compare, ib_obj_type)
         if 'extattrs' in proposed_object:
             proposed_object['extattrs'] = normalize_extattrs(proposed_object['extattrs'])
 
