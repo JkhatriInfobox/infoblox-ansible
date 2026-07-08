@@ -768,6 +768,8 @@ class WapiModule(WapiBase):
 
         # Checks if 'new_ipv4addr' param exists in ipv4addr args
         proposed_object = self.check_for_new_ipv4addr(proposed_object)
+        # Checks if 'new_ipv6addr' param exists in ipv6addr args
+        proposed_object = self.check_for_new_ipv6addr(proposed_object)
 
         res = None
         if ib_obj_type == NIOS_VLAN:
@@ -987,6 +989,16 @@ class WapiModule(WapiBase):
             if 'new_ipv4addr' in proposed_object['ipv4addr']:
                 new_ipv4 = check_type_dict(proposed_object['ipv4addr'])['new_ipv4addr']
                 proposed_object['ipv4addr'] = new_ipv4
+
+        return proposed_object
+
+    def check_for_new_ipv6addr(self, proposed_object):
+        ''' Checks if new_ipv6addr parameter is passed in the argument
+            while updating the AAAA record with new ipv6addr with static allocation'''
+        if 'ipv6addr' in proposed_object:
+            if 'new_ipv6addr' in proposed_object['ipv6addr']:
+                new_ipv6 = check_type_dict(proposed_object['ipv6addr'])['new_ipv6addr']
+                proposed_object['ipv6addr'] = new_ipv6
 
         return proposed_object
 
@@ -1256,7 +1268,7 @@ class WapiModule(WapiBase):
         ''' this function gets the reference object of pre-existing nios objects '''
         update = False
         old_name = new_name = None
-        old_ipv4addr_exists = old_text_exists = False
+        old_ipv4addr_exists = old_text_exists = old_ipv6addr_exists = False
         next_ip_exists = False
 
         if ib_obj_type == NIOS_VLAN:
@@ -1394,6 +1406,21 @@ class WapiModule(WapiBase):
                 # resolve issue if nios_next_ip exists which is not searchable attribute
                 if next_ip_exists:
                     del test_obj_filter['ipv4addr']
+            elif (ib_obj_type == NIOS_AAAA_RECORD):
+                # resolves issue where aaaa_record with uppercase name was returning null and was failing
+                test_obj_filter = obj_filter
+                test_obj_filter['name'] = test_obj_filter['name'].lower()
+                # resolves issue where multiple aaaa_records with same name and different IPv6 address
+                # supports IP swap via ipv6addr: {old_ipv6addr: X, new_ipv6addr: Y}
+                old_ipv6addr_exists = False
+                try:
+                    ipaddr_obj = check_type_dict(obj_filter['ipv6addr'])
+                    ipaddr = ipaddr_obj.get('old_ipv6addr')
+                    old_ipv6addr_exists = True if ipaddr else False
+                except TypeError:
+                    ipaddr = obj_filter['ipv6addr']
+                if old_ipv6addr_exists:
+                    test_obj_filter['ipv6addr'] = ipaddr
             elif (ib_obj_type == NIOS_TXT_RECORD):
                 # resolves issue where multiple txt_records with same name and different text
                 test_obj_filter = obj_filter
@@ -1515,6 +1542,9 @@ class WapiModule(WapiBase):
             # prevents creation of a new A record with 'new_ipv4addr' when A record with a particular 'old_ipv4addr' is not found
             if old_ipv4addr_exists and (ib_obj is None or len(ib_obj) == 0):
                 self.module.fail_json(msg="A Record with ipv4addr: '%s' is not found" % (ipaddr))
+            # prevents creation of a new AAAA record with 'new_ipv6addr' when AAAA record with a particular 'old_ipv6addr' is not found
+            if old_ipv6addr_exists and (ib_obj is None or len(ib_obj) == 0):
+                self.module.fail_json(msg="AAAA Record with ipv6addr: '%s' is not found" % (ipaddr))
             # prevents creation of a new TXT record with 'new_text' when TXT record with a particular 'old_text' is not found
             if old_text_exists and ib_obj is None:
                 self.module.fail_json(msg="TXT Record with text: '%s' is not found" % (txt))
@@ -1532,6 +1562,22 @@ class WapiModule(WapiBase):
             # prevents creation of a new A record with 'new_ipv4addr' when A record with a particular 'old_ipv4addr' is not found
             if old_ipv4addr_exists and ib_obj is None:
                 self.module.fail_json(msg="A Record with ipv4addr: '%s' is not found" % (ipaddr))
+        elif (ib_obj_type == NIOS_AAAA_RECORD):
+            # resolves issue where multiple aaaa_records with same name and different IPv6 address
+            # supports IP swap via ipv6addr: {old_ipv6addr: X, new_ipv6addr: Y}
+            test_obj_filter = obj_filter
+            old_ipv6addr_exists = False
+            try:
+                ipaddr_obj = check_type_dict(obj_filter['ipv6addr'])
+                ipaddr = ipaddr_obj.get('old_ipv6addr')
+                old_ipv6addr_exists = True if ipaddr else False
+            except TypeError:
+                ipaddr = obj_filter['ipv6addr']
+            test_obj_filter['ipv6addr'] = ipaddr
+            ib_obj = self.get_object(ib_obj_type, test_obj_filter.copy(), return_fields=list(ib_spec.keys()))
+            # prevents creation of a new AAAA record with 'new_ipv6addr' when AAAA record with a particular 'old_ipv6addr' is not found
+            if old_ipv6addr_exists and ib_obj is None:
+                self.module.fail_json(msg="AAAA Record with ipv6addr: '%s' is not found" % (ipaddr))
         elif (ib_obj_type == NIOS_TXT_RECORD):
             # resolves issue where multiple txt_records with same name and different text
             test_obj_filter = obj_filter
