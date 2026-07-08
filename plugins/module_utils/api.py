@@ -596,8 +596,11 @@ class WapiModule(WapiBase):
                 and obj_filter.get('view') == 'default'):
             retry_filter = dict(obj_filter)
             retry_filter.pop('view', None)
-            retry_obj_ref, retry_update, retry_new_name = self.get_object_ref(
-                self.module, ib_obj_type, retry_filter, ib_spec)
+            try:
+                retry_obj_ref, retry_update, retry_new_name = self.get_object_ref(
+                    self.module, ib_obj_type, retry_filter, ib_spec)
+            except Exception as exc:
+                self.module.fail_json(msg=to_native(exc))
             if retry_obj_ref:
                 ipam_only = [
                     rec for rec in retry_obj_ref
@@ -948,13 +951,16 @@ class WapiModule(WapiBase):
     def get_network_view(self, proposed_object):
         ''' Check for the associated network view with
             the given dns_view'''
+        view_name = proposed_object.get('view') if isinstance(proposed_object, dict) else None
+        if not view_name:
+            self.module.fail_json(msg="dns_view is required to look up the associated network view")
         try:
-            network_view_ref = self.get_object('view', {"name": proposed_object['view']}, return_fields=['network_view'])
-            if network_view_ref:
-                network_view = network_view_ref[0].get('network_view')
-                return network_view
+            network_view_ref = self.get_object('view', {"name": view_name}, return_fields=['network_view'])
         except Exception:
-            self.module.fail_json(msg="object with dns_view: %s not found" % (proposed_object['view']))
+            self.module.fail_json(msg="object with dns_view: %s not found" % view_name)
+        if not network_view_ref:
+            self.module.fail_json(msg="object with dns_view: %s not found" % view_name)
+        return network_view_ref[0].get('network_view')
 
     def check_if_nios_next_ip_exists(self, proposed_object):
         ''' Check if nios_next_ip argument is passed in ipaddr while creating
@@ -1307,7 +1313,7 @@ class WapiModule(WapiBase):
                         ib_obj = ipam_only or None
                 if ib_obj:
                     obj_filter['name'] = new_name
-                elif old_ipv4addr_exists and (len(ib_obj) == 0):
+                elif old_ipv4addr_exists and (not ib_obj):
                     self.module.fail_json(
                         msg="object with name: '%s', ipv4addr: '%s' is not found" % (old_name, test_obj_filter['ipv4addr']))
                 else:
