@@ -884,8 +884,9 @@ class WapiModule(WapiBase):
                         if not self.module.check_mode:
                             self.update_object(ref, proposed_object)
                         result['changed'] = True
-                elif not self.module.check_mode:
-                    self.delete_object(ref)
+                else:
+                    if not self.module.check_mode:
+                        self.delete_object(ref)
                     result['changed'] = True
 
         # ------------------------------------------------------------------
