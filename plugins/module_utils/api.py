@@ -682,7 +682,8 @@ class WapiModule(WapiBase):
             current_object = convert_members_to_struct(current_object)
             current_object = convert_vlans_to_struct(current_object)
 
-        if ib_obj_type in {NIOS_IPV4_NETWORK_CONTAINER, NIOS_IPV6_NETWORK_CONTAINER, NIOS_IPV4_NETWORK, NIOS_IPV6_NETWORK, NIOS_RANGE}:
+        if ib_obj_type in {NIOS_IPV4_NETWORK_CONTAINER, NIOS_IPV6_NETWORK_CONTAINER, NIOS_IPV4_NETWORK, NIOS_IPV6_NETWORK, NIOS_RANGE,
+                           NIOS_IPV4_FIXED_ADDRESS, NIOS_IPV6_FIXED_ADDRESS}:
 
             # Iterate over each option and remove the 'num' key
             if current_object.get('options') or proposed_object.get('options'):
