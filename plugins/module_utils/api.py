@@ -1548,7 +1548,8 @@ class WapiModule(WapiBase):
             if old_ipv6addr_exists and (ib_obj is None or len(ib_obj) == 0):
                 self.module.fail_json(msg="AAAA Record with ipv6addr: '%s' is not found" % (ipaddr))
             # prevents creation of a new TXT record with 'new_text' when TXT record with a particular 'old_text' is not found
-            if old_text_exists and ib_obj is None:
+            # Note: get_object returns [] (empty list) when not found, NOT None — both cases must be checked
+            if old_text_exists and (ib_obj is None or len(ib_obj) == 0):
                 self.module.fail_json(msg="TXT Record with text: '%s' is not found" % (txt))
         elif (ib_obj_type == NIOS_A_RECORD):
             # resolves issue where multiple a_records with same name and different IP address
@@ -1606,7 +1607,8 @@ class WapiModule(WapiBase):
             test_obj_filter['text'] = txt
             ib_obj = self.get_object(ib_obj_type, test_obj_filter.copy(), return_fields=list(ib_spec.keys()))
             # prevents creation of a new TXT record with 'new_text' when TXT record with a particular 'old_text' is not found
-            if old_text_exists and ib_obj is None:
+            # Note: get_object returns [] (empty list) when not found, NOT None — both cases must be checked
+            if old_text_exists and (ib_obj is None or len(ib_obj) == 0):
                 self.module.fail_json(msg="TXT Record with text: '%s' is not found" % (txt))
         elif (ib_obj_type == NIOS_ZONE):
             # del key 'restart_if_needed' as nios_zone get_object fails with the key present
