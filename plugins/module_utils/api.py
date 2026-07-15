@@ -1087,7 +1087,12 @@ class WapiModule(WapiBase):
                 # list regardless of position, so a pure reorder would go
                 # undetected (changed=false). Enforce a positional match so a
                 # reorder is reported as a change.
-                if ib_obj_type == NIOS_DTC_TOPOLOGY and key == 'rules':
+                #
+                # Only do this when rules are actually proposed. Omitting the
+                # rules option yields an empty proposed list, which historically
+                # means "do not manage rules" (idempotent); the length check
+                # must not treat that as a reorder and wipe the existing rules.
+                if ib_obj_type == NIOS_DTC_TOPOLOGY and key == 'rules' and proposed_item:
                     if len(proposed_item) != len(current_item):
                         return False
                     for proposed_rule, current_rule in zip(proposed_item, current_item):

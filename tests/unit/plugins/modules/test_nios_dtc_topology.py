@@ -607,3 +607,23 @@ class TestNiosDtcTopologyModule(TestNiosModule):
         self.assertFalse(res['changed'],
                          'Re-applying the same rule order must be idempotent')
         wapi.update_object.assert_not_called()
+
+    def test_nios_dtc_topology_omitted_rules_idempotent(self):
+        """Omitting the rules option must not be treated as a reorder: the
+        transform yields an empty proposed rule list, which means "do not
+        manage rules". The positional reorder check must not fire on an empty
+        proposed list and wipe the existing rules (regression: a bare
+        re-apply reported changed=True and dropped the rules)."""
+        self.module.params = {'provider': None, 'state': 'present',
+                              'name': 'reorder_topo',
+                              'rules': [],
+                              'comment': None, 'extattrs': None}
+        test_object = self._existing_topology(['pool1', 'pool2', 'pool3'])
+        test_spec = {"name": {"ib_req": True}, "rules": {}, "comment": {}, "extattrs": {}}
+
+        wapi = self._get_wapi(test_object)
+        res = wapi.run(api.NIOS_DTC_TOPOLOGY, test_spec)
+
+        self.assertFalse(res['changed'],
+                         'Re-applying with rules omitted must be idempotent')
+        wapi.update_object.assert_not_called()
