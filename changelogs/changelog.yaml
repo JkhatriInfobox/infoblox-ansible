@@ -316,6 +316,16 @@ releases:
           name: nios_next_vlan_id
           namespace:
     release_date: "2025-01-29"
+  1.9.0:
+    changes:
+      release_summary: "Enhanced DTC LBDN with auth_zones support, fixed parameter handling, and improved CI/CD reliability."
+      bugfixes:
+        - Fixed transform functions to handle ``None`` parameters and apply default values correctly
+        - Fixed sanity and unit test execution in CI pipeline
+      minor_changes:
+        - nios_dtc_lbdn - Added support for auth_zones with enhanced change detection for string and object formats, including proper handling when entries are removed
+        - CI/CD - Added PyGObject support and improved dependency handling
+    release_date: "2025-01-27"
   1.10.0:
     changes:
       release_summary: >-
@@ -378,6 +388,12 @@ releases:
           response is not a dict (e.g. bad credentials returning raw bytes);
           non-dict responses now fall back to a clean error message
           (https://github.com/infobloxopen/infoblox-ansible/pull/346).
+        - >-
+          api - fix ``TypeError`` when ``module.params['provider']`` is ``None``
+          (credentials supplied via environment variables); the provider is now
+          treated as an empty mapping to prevent
+          ``argument after ** must be a mapping`` errors
+          (https://github.com/infobloxopen/infoblox-ansible/pull/328).
         - >-
           api.py - fix deprecation warning when importing ``to_native`` and
           ``to_text`` by using the updated import path
@@ -474,7 +490,7 @@ releases:
           nios_network - fix ``state=absent`` when ``network_view`` is not
           specified; the module now falls back to a CIDR-only lookup so the
           resource can be deleted without requiring ``network_view``
-          (https://github.com/infobloxopen/infoblox-ansible/issues/135).
+          (https://github.com/infobloxopen/infoblox-ansible/pull/335).
         - >-
           nios_network, nios_range - fix multiple issues with structural DHCP
           options (``routers``/num=3, ``ntp-servers``/num=42,
@@ -526,6 +542,11 @@ releases:
           mode; the existing ref is preserved instead
           (https://github.com/infobloxopen/infoblox-ansible/pull/318).
         - >-
+          nios_* modules - fix error reporting so that ``result.msg`` contains
+          the actual WAPI error reason; modules now call ``fail_json`` so
+          operators see the real failure instead of a generic message
+          (https://github.com/infobloxopen/infoblox-ansible/pull/350).
+        - >-
           nios_* modules - fix post-fetch object retrieval on WAPI 2.14+ where
           create/update returns a ``{_ref, uuid}`` dict instead of a bare ``_ref``
           string (NPA-1964,
@@ -541,18 +562,14 @@ releases:
           the real failure reason
           (https://github.com/infobloxopen/infoblox-ansible/pull/321).
         - >-
+          WapiModule - fix transform functions being skipped when a module
+          parameter is ``None``; default values are now applied to the WAPI
+          payload even when the corresponding parameter is not set
+          (https://github.com/infobloxopen/infoblox-ansible/pull/309).
+        - >-
           WapiModule - ``vlans`` on network objects are now normalized to retain
           only the ``vlan`` reference key before comparison, removing NIOS-added
           ``id`` and ``name`` fields that caused false diffs
           (https://github.com/infobloxopen/infoblox-ansible/pull/321).
     release_date: "2026-07-15"
-  1.9.0:
-    changes:
-      release_summary: "Enhanced DTC LBDN with auth_zones support, fixed parameter handling, and improved CI/CD reliability."
-      bugfixes:
-        - Fixed transform functions to handle ``None`` parameters and apply default values correctly
-        - Fixed sanity and unit test execution in CI pipeline
-      minor_changes:
-        - nios_dtc_lbdn - Added support for auth_zones with enhanced change detection for string and object formats, including proper handling when entries are removed
-        - CI/CD - Added PyGObject support and improved dependency handling
-    release_date: "2025-01-27"
+

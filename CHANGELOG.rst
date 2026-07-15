@@ -28,6 +28,7 @@ Bugfixes
 --------
 - api - Attach a ``NullHandler`` to the ``infoblox_client`` logger to suppress spurious "No handlers could be found" warnings and library re-auth log noise when the consuming application has not configured logging. `#346 <https://github.com/infobloxopen/infoblox-ansible/pull/346>`_
 - api - Fix ``TypeError`` in ``handle_exception`` when the WAPI error response is not a dict (e.g. bad credentials returning raw bytes); non-dict responses now fall back to a clean error message. `#346 <https://github.com/infobloxopen/infoblox-ansible/pull/346>`_
+- api - Fix ``TypeError`` when ``module.params['provider']`` is ``None`` (credentials supplied via environment variables); the provider is now treated as an empty mapping to prevent ``argument after ** must be a mapping`` errors. `#328 <https://github.com/infobloxopen/infoblox-ansible/pull/328>`_
 - api.py - Fix deprecation warning when importing ``to_native`` and ``to_text`` by using the updated import path. `#316 <https://github.com/infobloxopen/infoblox-ansible/pull/316>`_
 - nios_dtc_lbdn - Updating the ``types`` or ``patterns`` field is no longer silently ignored. These scalar lists are now compared by membership so adds, removals, and changes are correctly detected. `#357 <https://github.com/infobloxopen/infoblox-ansible/pull/357>`_
 - nios_dtc_monitor_http - Fix idempotency when the ``request`` field is set. NIOS auto-appends ``Connection: close`` to the stored value; both sides are now normalized before comparison. `#348 <https://github.com/infobloxopen/infoblox-ansible/pull/348>`_
@@ -57,11 +58,12 @@ Bugfixes
 - nios_adminuser - Exclude write-only ``password`` from the idempotency comparison. NIOS never returns the password on read, so including it caused every run to report ``changed=true``. `#321 <https://github.com/infobloxopen/infoblox-ansible/pull/321>`_
 - nios_* modules - ``state=absent`` in check mode now correctly reports ``changed=true`` when the target object exists and would be deleted. `#352 <https://github.com/infobloxopen/infoblox-ansible/pull/352>`_
 - nios_* modules - ``Update`` path no longer calls ``update_object`` in check mode; the existing ref is preserved instead. `#318 <https://github.com/infobloxopen/infoblox-ansible/pull/318>`_
+- nios_* modules - Fix error reporting so that ``result.msg`` contains the actual WAPI error reason; modules now call ``fail_json`` so operators see the real failure instead of a generic message. `#350 <https://github.com/infobloxopen/infoblox-ansible/pull/350>`_
 - nios_* modules - Fix post-fetch object retrieval on WAPI 2.14+ where create/update returns a ``{_ref, uuid}`` dict instead of a bare ``_ref`` string. `#345 <https://github.com/infobloxopen/infoblox-ansible/pull/345>`_
 - WapiModule - ``state=absent`` is now idempotent when the NIOS object is already missing; a ``NotFound`` response during delete is treated as ``changed=false`` rather than a failure. `#337 <https://github.com/infobloxopen/infoblox-ansible/pull/337>`_
 - WapiModule.handle_exception - Guard against WAPI error responses that omit the ``Error`` key, which previously raised ``KeyError`` and masked the real failure reason. `#321 <https://github.com/infobloxopen/infoblox-ansible/pull/321>`_
+- WapiModule - Fix transform functions being skipped when a module parameter is ``None``; default values are now applied to the WAPI payload even when the corresponding parameter is not set. `#309 <https://github.com/infobloxopen/infoblox-ansible/pull/309>`_
 - WapiModule - ``vlans`` on network objects are now normalized to retain only the ``vlan`` reference key before comparison, removing NIOS-added ``id`` and ``name`` fields that caused false diffs. `#321 <https://github.com/infobloxopen/infoblox-ansible/pull/321>`_
-
 
 v1.9.0
 ======
