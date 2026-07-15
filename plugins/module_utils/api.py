@@ -577,7 +577,10 @@ class WapiModule(WapiBase):
 
         obj_filter = dict([(k, self.module.params[k]) for k, v in ib_spec.items() if v.get('ib_req')])
         # get object reference
-        ib_obj_ref, update, new_name = self.get_object_ref(self.module, ib_obj_type, obj_filter, ib_spec)
+        try:
+            ib_obj_ref, update, new_name = self.get_object_ref(self.module, ib_obj_type, obj_filter, ib_spec)
+        except Exception as exc:
+            self.module.fail_json(msg=to_native(exc))
 
         # Issue #300: IPAM-only host records carry view=' ' in WAPI. If the user
         # calls state=absent (or update) without specifying a view, our search
@@ -593,8 +596,11 @@ class WapiModule(WapiBase):
                 and obj_filter.get('view') == 'default'):
             retry_filter = dict(obj_filter)
             retry_filter.pop('view', None)
-            retry_obj_ref, retry_update, retry_new_name = self.get_object_ref(
-                self.module, ib_obj_type, retry_filter, ib_spec)
+            try:
+                retry_obj_ref, retry_update, retry_new_name = self.get_object_ref(
+                    self.module, ib_obj_type, retry_filter, ib_spec)
+            except Exception as exc:
+                self.module.fail_json(msg=to_native(exc))
             if retry_obj_ref:
                 ipam_only = [
                     rec for rec in retry_obj_ref
@@ -945,13 +951,16 @@ class WapiModule(WapiBase):
     def get_network_view(self, proposed_object):
         ''' Check for the associated network view with
             the given dns_view'''
+        view_name = proposed_object.get('view') if isinstance(proposed_object, dict) else None
+        if not view_name:
+            self.module.fail_json(msg="dns_view is required to look up the associated network view")
         try:
-            network_view_ref = self.get_object('view', {"name": proposed_object['view']}, return_fields=['network_view'])
-            if network_view_ref:
-                network_view = network_view_ref[0].get('network_view')
-                return network_view
+            network_view_ref = self.get_object('view', {"name": view_name}, return_fields=['network_view'])
         except Exception:
-            raise Exception("object with dns_view: %s not found" % (proposed_object['view']))
+            self.module.fail_json(msg="object with dns_view: %s not found" % view_name)
+        if not network_view_ref:
+            self.module.fail_json(msg="object with dns_view: %s not found" % view_name)
+        return network_view_ref[0].get('network_view')
 
     def check_if_nios_next_ip_exists(self, proposed_object):
         ''' Check if nios_next_ip argument is passed in ipaddr while creating
@@ -1328,11 +1337,11 @@ class WapiModule(WapiBase):
                         ib_obj = ipam_only or None
                 if ib_obj:
                     obj_filter['name'] = new_name
-                elif old_ipv4addr_exists and (len(ib_obj) == 0):
-                    raise Exception(
-                        "object with name: '%s', ipv4addr: '%s' is not found" % (old_name, test_obj_filter['ipv4addr']))
+                elif old_ipv4addr_exists and (not ib_obj):
+                    self.module.fail_json(
+                        msg="object with name: '%s', ipv4addr: '%s' is not found" % (old_name, test_obj_filter['ipv4addr']))
                 else:
-                    raise Exception("object with name: '%s' is not found" % (old_name))
+                    self.module.fail_json(msg="object with name: '%s' is not found" % (old_name))
                 update = True
                 return ib_obj, update, new_name
             if (ib_obj_type == NIOS_HOST_RECORD):
@@ -1505,10 +1514,10 @@ class WapiModule(WapiBase):
 
             # prevents creation of a new A record with 'new_ipv4addr' when A record with a particular 'old_ipv4addr' is not found
             if old_ipv4addr_exists and (ib_obj is None or len(ib_obj) == 0):
-                raise Exception("A Record with ipv4addr: '%s' is not found" % (ipaddr))
+                self.module.fail_json(msg="A Record with ipv4addr: '%s' is not found" % (ipaddr))
             # prevents creation of a new TXT record with 'new_text' when TXT record with a particular 'old_text' is not found
             if old_text_exists and ib_obj is None:
-                raise Exception("TXT Record with text: '%s' is not found" % (txt))
+                self.module.fail_json(msg="TXT Record with text: '%s' is not found" % (txt))
         elif (ib_obj_type == NIOS_A_RECORD):
             # resolves issue where multiple a_records with same name and different IP address
             test_obj_filter = obj_filter
@@ -1522,7 +1531,7 @@ class WapiModule(WapiBase):
             ib_obj = self.get_object(ib_obj_type, test_obj_filter.copy(), return_fields=list(ib_spec.keys()))
             # prevents creation of a new A record with 'new_ipv4addr' when A record with a particular 'old_ipv4addr' is not found
             if old_ipv4addr_exists and ib_obj is None:
-                raise Exception("A Record with ipv4addr: '%s' is not found" % (ipaddr))
+                self.module.fail_json(msg="A Record with ipv4addr: '%s' is not found" % (ipaddr))
         elif (ib_obj_type == NIOS_TXT_RECORD):
             # resolves issue where multiple txt_records with same name and different text
             test_obj_filter = obj_filter
@@ -1550,7 +1559,7 @@ class WapiModule(WapiBase):
             ib_obj = self.get_object(ib_obj_type, test_obj_filter.copy(), return_fields=list(ib_spec.keys()))
             # prevents creation of a new TXT record with 'new_text' when TXT record with a particular 'old_text' is not found
             if old_text_exists and ib_obj is None:
-                raise Exception("TXT Record with text: '%s' is not found" % (txt))
+                self.module.fail_json(msg="TXT Record with text: '%s' is not found" % (txt))
         elif (ib_obj_type == NIOS_ZONE):
             # del key 'restart_if_needed' as nios_zone get_object fails with the key present
             temp = ib_spec['restart_if_needed']
@@ -1580,7 +1589,7 @@ class WapiModule(WapiBase):
                 if ib_obj:
                     obj_filter['host_name'] = new_name
                 else:
-                    raise Exception("object with name: '%s' is not found" % (old_name))
+                    self.module.fail_json(msg="object with name: '%s' is not found" % (old_name))
                 update = True
             else:
                 # del key 'create_token' as nios_member get_object fails with the key present
@@ -1647,8 +1656,8 @@ class WapiModule(WapiBase):
             # throws exception if start_addr and end_addr doesn't exists for updating range
             if (new_start_arg and new_end_arg):
                 if not ib_obj:
-                    raise Exception(
-                        'Specified range %s-%s not found' % (obj_filter['start_addr'], obj_filter['end_addr']))
+                    self.module.fail_json(
+                        msg='Specified range %s-%s not found' % (obj_filter['start_addr'], obj_filter['end_addr']))
         else:
             ib_obj = self.get_object(ib_obj_type, obj_filter.copy(), return_fields=list(ib_spec.keys()))
         return ib_obj, update, new_name
