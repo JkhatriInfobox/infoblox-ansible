@@ -1,3 +1,0 @@
----
-bugfixes:
-  - "Fix post-fetch object retrieval on WAPI 2.14+ where create/update returns {_ref, uuid} dict instead of bare _ref string; normalize dict to extract _ref before GET (NPA-1964, related to #305)"

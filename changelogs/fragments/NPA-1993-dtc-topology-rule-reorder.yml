@@ -1,7 +1,0 @@
----
-bugfixes:
-  - nios_dtc_topology module - reordering the rules of an existing topology is
-    now detected as a change. Rule order sets the priority sequence, but the
-    idempotency comparison matched rules regardless of position, so a pure
-    reorder reported ``changed=false`` and silently kept the original order.
-    Topology rules are now compared positionally.
