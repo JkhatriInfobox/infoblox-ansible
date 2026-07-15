@@ -1064,7 +1064,13 @@ class WapiModule(WapiBase):
                 return False
 
             elif isinstance(proposed_item, list):
-                if key == 'aliases':
+                # Lists of plain scalars (e.g. the dtc:lbdn 'types' and
+                # 'patterns' fields, or a record's 'aliases') are compared by
+                # membership regardless of order. Without this the generic
+                # subitem loop below skips every non-dict element, so an
+                # added/removed/changed value goes undetected and the module
+                # reports changed=false with no WAPI call made.
+                if key in ('aliases', 'types', 'patterns'):
                     if set(current_item) != set(proposed_item):
                         return False
                 # If the lists are of a different length, the objects cannot be

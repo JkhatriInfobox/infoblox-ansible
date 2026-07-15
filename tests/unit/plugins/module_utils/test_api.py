@@ -864,6 +864,48 @@ class TestNiosApi(unittest.TestCase):
         self.assertFalse(wapi.compare_objects(current, proposed, ib_obj_type=api.NIOS_DTC_LBDN))
 
     # ------------------------------------------------------------------
+    # nios_dtc_lbdn 'types' and 'patterns' are lists of plain strings.
+    # Changing them was silently ignored because the generic list comparison
+    # skips non-dict elements. These are now compared by membership so
+    # additions/removals are detected while reorders stay idempotent.
+    # ------------------------------------------------------------------
+
+    def test_compare_objects_types_addition_returns_false(self):
+        '''Adding a resource-record type must register as a change.'''
+        wapi = api.WapiModule(self.module)
+        proposed = {'types': ['A', 'AAAA']}
+        current = {'types': ['A']}
+        self.assertFalse(wapi.compare_objects(current, proposed, ib_obj_type=api.NIOS_DTC_LBDN))
+
+    def test_compare_objects_types_removal_returns_false(self):
+        '''Removing a resource-record type must register as a change.'''
+        wapi = api.WapiModule(self.module)
+        proposed = {'types': ['A']}
+        current = {'types': ['A', 'AAAA']}
+        self.assertFalse(wapi.compare_objects(current, proposed, ib_obj_type=api.NIOS_DTC_LBDN))
+
+    def test_compare_objects_types_reorder_returns_true(self):
+        '''Reordering identical types must NOT register as a change.'''
+        wapi = api.WapiModule(self.module)
+        proposed = {'types': ['AAAA', 'A']}
+        current = {'types': ['A', 'AAAA']}
+        self.assertTrue(wapi.compare_objects(current, proposed, ib_obj_type=api.NIOS_DTC_LBDN))
+
+    def test_compare_objects_patterns_addition_returns_false(self):
+        '''Adding an LBDN pattern must register as a change.'''
+        wapi = api.WapiModule(self.module)
+        proposed = {'patterns': ['*.a.com', '*.b.com']}
+        current = {'patterns': ['*.a.com']}
+        self.assertFalse(wapi.compare_objects(current, proposed, ib_obj_type=api.NIOS_DTC_LBDN))
+
+    def test_compare_objects_patterns_reorder_returns_true(self):
+        '''Reordering identical patterns must NOT register as a change.'''
+        wapi = api.WapiModule(self.module)
+        proposed = {'patterns': ['*.b.com', '*.a.com']}
+        current = {'patterns': ['*.a.com', '*.b.com']}
+        self.assertTrue(wapi.compare_objects(current, proposed, ib_obj_type=api.NIOS_DTC_LBDN))
+
+    # ------------------------------------------------------------------
     # Issue #59: nsgroup list fields (external_secondaries, external_primaries,
     # grid_primary, grid_secondaries) must detect removal of entries.
     # ------------------------------------------------------------------

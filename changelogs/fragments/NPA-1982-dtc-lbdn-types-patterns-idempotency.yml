@@ -1,0 +1,9 @@
+---
+bugfixes:
+  - nios_dtc_lbdn - updating the ``types`` or ``patterns`` field is no longer
+    silently ignored. These are lists of plain strings, and the idempotency
+    comparison skipped every non-dict list element, so adding, removing or
+    changing a value produced ``changed=false`` and never issued the WAPI
+    update. Scalar lists are now compared by membership so such changes are
+    detected and applied while genuinely unchanged lists stay idempotent
+    (NPA-1982).
