@@ -1142,6 +1142,24 @@ class WapiModule(WapiBase):
                 if key in ('pools', 'servers', 'external_servers', 'list_values') and not self.verify_list_order(proposed_item, current_item):
                     return False
 
+                # Rule order is semantically significant for DTC topologies: it
+                # sets the rule priority sequence. The generic issubset() check
+                # below matches each proposed rule against the whole current
+                # list regardless of position, so a pure reorder would go
+                # undetected (changed=false). Enforce a positional match so a
+                # reorder is reported as a change.
+                #
+                # Only do this when rules are actually proposed. Omitting the
+                # rules option yields an empty proposed list, which historically
+                # means "do not manage rules" (idempotent); the length check
+                # must not treat that as a reorder and wipe the existing rules.
+                if ib_obj_type == NIOS_DTC_TOPOLOGY and key == 'rules' and proposed_item:
+                    if len(proposed_item) != len(current_item):
+                        return False
+                    for proposed_rule, current_rule in zip(proposed_item, current_item):
+                        if not self.issubset(proposed_rule, [current_rule]):
+                            return False
+
                 for subitem in proposed_item:
                     if not isinstance(subitem, dict):
                         continue  # Skip non-dict items
