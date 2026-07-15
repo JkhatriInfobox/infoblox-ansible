@@ -572,4 +572,3 @@ releases:
           ``id`` and ``name`` fields that caused false diffs
           (https://github.com/infobloxopen/infoblox-ansible/pull/321).
     release_date: "2026-07-15"
-
