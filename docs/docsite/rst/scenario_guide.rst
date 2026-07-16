@@ -19,7 +19,7 @@ Before using the collection, ensure your control node meets these requirements:
 
 - Python 3.10 or later
 - Ansible Core 2.16 or later
-- NIOS 8.6.x and 9.0.x
+- NIOS 9.0.x and 9.1.x
 - Infoblox WAPI 2.12.3 or later
 - ``infoblox-client`` 0.6.2
 

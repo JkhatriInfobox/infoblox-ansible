@@ -62,7 +62,7 @@ The `infoblox.nios_modules` collection has the following content:
 
 - Python version 3.10 or later
 - Ansible Core version 2.16 or later
-- NIOS 8.6.x and 9.0.x
+- NIOS 9.0.x and 9.1.x
 - Infoblox WAPI version 2.12.3 or later
 - Python module infoblox-client version 0.6.2
  
@@ -239,8 +239,8 @@ The collection has been tested in the following environments:
     - Ansible Core 2.18
 
 - **NIOS Versions:**
-    - NIOS 8.6.x
     - NIOS 9.0.x
+    - NIOS 9.1.x
 
 ### Known Exceptions and Workarounds
 
@@ -258,7 +258,7 @@ We welcome your contributions to Infoblox Nios Modules. See [CONTRIBUTING.md](ht
 ### Supported Versions
 
 Infoblox NIOS Modules for Ansible Collections supports the following versions:
-- **NIOS Versions:** 8.6.x and 9.0.x
+- **NIOS Versions:** 9.0.x and 9.1.x
 - **Ansible Core Versions:** 2.16 and later
 - **Python Versions:** 3.10 and later
 
