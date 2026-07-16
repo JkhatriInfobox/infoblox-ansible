@@ -4,6 +4,68 @@ Infoblox.Nios_Modules Release Notes
 
 .. contents:: Topics
 
+v1.10.0
+=======
+
+Release Summary
+---------------
+This release delivers comprehensive idempotency improvements, NIOS 9.1.0 (WAPI 2.14) compatibility enhancements, extensible attribute inheritance support, and a broad set of bug fixes across host records, fixed addresses, NSGroups, DTC objects, inventory, network management, and more.
+
+Breaking Changes / Porting Guide
+---------------------------------
+- nios_next_network lookup - the ``cidr`` argument is now required and must be an integer. Previously, omitting ``cidr`` silently defaulted to ``24``; playbooks that relied on this default now fail with ``AnsibleError: missing required argument: cidr``. Update such playbooks to pass ``cidr`` explicitly. `#315 <https://github.com/infobloxopen/infoblox-ansible/pull/315>`_
+
+Minor Changes
+-------------
+- module_utils/api - Extensible attributes now support inheritance control. An ``extattrs`` value may be given as a dict with ``inheritance_operation: INHERIT`` or ``OVERRIDE`` to revert an object to its inherited value or to explicitly override an inherited one. `#347 <https://github.com/infobloxopen/infoblox-ansible/pull/347>`_
+- nios_* modules - After a successful create or update (``state: present``, ``changed: true``), modules now return the canonical NIOS object under ``result.object``. This makes lookup-allocated values (for example, the IP chosen by ``func: nios_next_ip``) accessible to downstream tasks. `#318 <https://github.com/infobloxopen/infoblox-ansible/pull/318>`_
+- nios_aaaa_record - Added support for swapping IPv6 addresses using ``old_ipv6addr`` and ``new_ipv6addr`` keys, consistent with the ``old_ipv4addr``/``new_ipv4addr`` pattern on ``nios_a_record``. `#351 <https://github.com/infobloxopen/infoblox-ansible/pull/351>`_
+- nios_dtc_topology - Added a new ``rules[].destination`` option (list of ``destination_link`` + ``priority`` structs) for WAPI 2.14+ / NIOS 9.1.0, enabling multiple prioritized destinations per rule. `#344 <https://github.com/infobloxopen/infoblox-ansible/pull/344>`_
+- nios_dtc_topology - ``rules[].destination_link`` is now deprecated and will be removed in collection version ``2.0.0``. Use ``rules[].destination`` for WAPI 2.14+ environments. `#344 <https://github.com/infobloxopen/infoblox-ansible/pull/344>`_
+- WapiModule.compare_objects - List-valued fields whose order is not semantically significant (``monitors``, ``members``, ``options``, ``delegate_to``, ``forwarding_servers``, ``stub_members``, ``ssh_keys``, ``vlans``, ``auth_zones``) are now compared with an order-insensitive algorithm, eliminating spurious ``changed=true`` when NIOS returns content in a different order. `#321 <https://github.com/infobloxopen/infoblox-ansible/pull/321>`_
+
+Bugfixes
+--------
+- api - Attach a ``NullHandler`` to the ``infoblox_client`` logger to suppress spurious "No handlers could be found" warnings and library re-auth log noise when the consuming application has not configured logging. `#346 <https://github.com/infobloxopen/infoblox-ansible/pull/346>`_
+- api - Fix ``TypeError`` in ``handle_exception`` when the WAPI error response is not a dict (e.g. bad credentials returning raw bytes); non-dict responses now fall back to a clean error message. `#346 <https://github.com/infobloxopen/infoblox-ansible/pull/346>`_
+- api - Fix ``TypeError`` when ``module.params['provider']`` is ``None`` (credentials supplied via environment variables); the provider is now treated as an empty mapping to prevent ``argument after ** must be a mapping`` errors. `#328 <https://github.com/infobloxopen/infoblox-ansible/pull/328>`_
+- api.py - Fix deprecation warning when importing ``to_native`` and ``to_text`` by using the updated import path. `#316 <https://github.com/infobloxopen/infoblox-ansible/pull/316>`_
+- nios_dtc_lbdn - Updating the ``types`` or ``patterns`` field is no longer silently ignored. These scalar lists are now compared by membership so adds, removals, and changes are correctly detected. `#357 <https://github.com/infobloxopen/infoblox-ansible/pull/357>`_
+- nios_dtc_monitor_http - Fix idempotency when the ``request`` field is set. NIOS auto-appends ``Connection: close`` to the stored value; both sides are now normalized before comparison. `#348 <https://github.com/infobloxopen/infoblox-ansible/pull/348>`_
+- nios_dtc_server - The idempotency lookup now matches by ``name`` only. Previously using both ``name`` and ``host`` caused a ``host`` change to miss the existing server and attempt a duplicate create. `#344 <https://github.com/infobloxopen/infoblox-ansible/pull/344>`_
+- nios_dtc_topology - Fix idempotency so re-applying an unchanged topology reports ``changed=false``. NIOS returns destination links as expanded objects; these are now flattened to bare references before comparison. `#344 <https://github.com/infobloxopen/infoblox-ansible/pull/344>`_
+- nios_dtc_topology - Reordering rules is now detected as a change. Rule order sets the priority sequence; the previous subset-only check missed pure reorders. `#356 <https://github.com/infobloxopen/infoblox-ansible/pull/356>`_
+- nios_fixed_address - Fix ``state=absent`` silently no-op'ing when the delete call returns ``NotFound`` (object already gone). The deletion is now treated as idempotent success. `#337 <https://github.com/infobloxopen/infoblox-ansible/pull/337>`_
+- nios_fixed_address - Fix idempotency when ``options: []`` is explicitly provided; an empty list no longer triggers a spurious update when the record already has no DHCP options. `#353 <https://github.com/infobloxopen/infoblox-ansible/pull/353>`_
+- nios_fixed_address - Look up existing records using ``mac`` together with ``ipv4addr`` (and ``duid`` together with ``ipv6addr``) so that ``state=absent`` and updates target the correct record instead of matching by MAC/DUID alone. `#338 <https://github.com/infobloxopen/infoblox-ansible/pull/338>`_
+- nios_fixed_address - Preserve ``options`` semantics: return ``None`` when the parameter is not provided (so existing DHCP options are not unintentionally cleared) and ``[]`` only when it is explicitly set to an empty list. `#338 <https://github.com/infobloxopen/infoblox-ansible/pull/338>`_
+- nios_fixed_address - Fail with an actionable error when a MAC-only or DUID-only fallback lookup matches more than one fixed address, asking the user to supply ``ipv4addr``/``ipv6addr`` to uniquely identify the target. `#338 <https://github.com/infobloxopen/infoblox-ansible/pull/338>`_
+- nios_host_record - Fix ``aliases`` always being reported as ``changed`` on idempotent re-runs. Aliases are now normalized before comparison. `#329 <https://github.com/infobloxopen/infoblox-ansible/pull/329>`_
+- nios_host_record - Fix several idempotency and update bugs: matching record selected by IP when multiple records share the same name, ``use_for_ea_inheritance`` no longer causes spurious changes, and add/remove IP operations are now idempotent. `#329 <https://github.com/infobloxopen/infoblox-ansible/pull/329>`_
+- nios_host_record - Fix ``state=absent`` silently no-op'ing on IPAM-only host records (``configure_for_dns=false``), which NIOS stores with ``view=" "`` rather than ``view="default"``. `#317 <https://github.com/infobloxopen/infoblox-ansible/pull/317>`_
+- nios_host_record - Fix ``ipv4addr`` configured with ``func: nios_next_ip`` always being reported as ``changed`` on re-runs. The next-available-IP token is now skipped during comparison. `#329 <https://github.com/infobloxopen/infoblox-ansible/pull/329>`_
+- nios_host_record - ``use_dns_ea_inheritance`` is now gated on the WAPI version. The field was introduced in WAPI 2.12.3/2.13.4; sending it to an earlier WAPI is now suppressed with a warning. `#321 <https://github.com/infobloxopen/infoblox-ansible/pull/321>`_
+- nios_inventory - Surface a meaningful error when the Infoblox Grid cannot be queried (wrong credentials, unreachable host, timeout). Previously the plugin failed with the confusing ``'Connector' object has no attribute 'handle_exception'`` message. `#340 <https://github.com/infobloxopen/infoblox-ansible/pull/340>`_
+- nios_network - Fix ``state=absent`` when ``network_view`` is not specified; the module now falls back to a CIDR-only lookup so the resource can be deleted without setting ``network_view``. `#335 <https://github.com/infobloxopen/infoblox-ansible/pull/335>`_
+- nios_network, nios_range - Fix multiple issues with structural DHCP options (``routers``/num=3, ``ntp-servers``/num=42, ``subnet-mask``/num=1): ``use_option`` is stripped for all structural option numbers and names, ``vendor_class`` is stripped for name-based options to avoid WAPI "Option DHCP.routers is undefined" errors. `#325 <https://github.com/infobloxopen/infoblox-ansible/pull/325>`_ `#333 <https://github.com/infobloxopen/infoblox-ansible/pull/333>`_
+- nios_nsgroup - Fix ``AttributeError`` crash (``'str' object has no attribute 'items'``) when ``extattrs`` is supplied. The argument is now declared as ``type=dict``. `#349 <https://github.com/infobloxopen/infoblox-ansible/pull/349>`_
+- nios_nsgroup - Fix idempotency when a TSIG key is configured on nameservers. ``tsig_key`` is write-only and ``tsig_key_name`` is stored as the ``use_tsig_key_name`` flag; TSIG fields are now canonicalized before comparison. `#349 <https://github.com/infobloxopen/infoblox-ansible/pull/349>`_
+- nios_nsgroup - Fix removal of an entry from a list field (``external_primaries``, ``external_secondaries``, ``grid_primary``, ``grid_secondaries``) not being detected; list comparison now verifies content equality. `#339 <https://github.com/infobloxopen/infoblox-ansible/pull/339>`_
+- nios_nsgroup - Make ``tsig_key_name`` optional for external and preferred-primaries nameservers; TSIG is optional on NIOS but was incorrectly marked as required. `#339 <https://github.com/infobloxopen/infoblox-ansible/pull/339>`_
+- nios_next_network lookup - Accept ``cidr`` as either an integer or a numeric string and validate it consistently, rejecting ``bool`` and ``float`` values that previously passed through silently. `#315 <https://github.com/infobloxopen/infoblox-ansible/pull/315>`_
+- nios_range - Accept ``/32`` (IPv4) and ``/128`` (IPv6) CIDR boundary values, which were previously rejected. `#314 <https://github.com/infobloxopen/infoblox-ansible/pull/314>`_
+- nios_txt_record - Fix ``old_text`` lookup failing silently when ``name`` is absent from the object filter, causing a new record to be created instead of failing with a clear error. `#355 <https://github.com/infobloxopen/infoblox-ansible/pull/355>`_
+- nios_adminuser - Exclude write-only ``password`` from the idempotency comparison. NIOS never returns the password on read, so including it caused every run to report ``changed=true``. `#321 <https://github.com/infobloxopen/infoblox-ansible/pull/321>`_
+- nios_* modules - ``state=absent`` in check mode now correctly reports ``changed=true`` when the target object exists and would be deleted. `#352 <https://github.com/infobloxopen/infoblox-ansible/pull/352>`_
+- nios_* modules - ``Update`` path no longer calls ``update_object`` in check mode; the existing ref is preserved instead. `#318 <https://github.com/infobloxopen/infoblox-ansible/pull/318>`_
+- nios_* modules - Fix error reporting so that ``result.msg`` contains the actual WAPI error reason; modules now call ``fail_json`` so operators see the real failure instead of a generic message. `#350 <https://github.com/infobloxopen/infoblox-ansible/pull/350>`_
+- nios_* modules - Fix post-fetch object retrieval on WAPI 2.14+ where create/update returns a ``{_ref, uuid}`` dict instead of a bare ``_ref`` string. `#345 <https://github.com/infobloxopen/infoblox-ansible/pull/345>`_
+- WapiModule - ``state=absent`` is now idempotent when the NIOS object is already missing; a ``NotFound`` response during delete is treated as ``changed=false`` rather than a failure. `#337 <https://github.com/infobloxopen/infoblox-ansible/pull/337>`_
+- WapiModule.handle_exception - Guard against WAPI error responses that omit the ``Error`` key, which previously raised ``KeyError`` and masked the real failure reason. `#321 <https://github.com/infobloxopen/infoblox-ansible/pull/321>`_
+- WapiLookup.handle_exception - Guard against a ``ConnectionError`` whose ``.response`` is ``None`` (e.g. host unreachable), which previously raised ``AttributeError`` and masked the real connection error. `#321 <https://github.com/infobloxopen/infoblox-ansible/pull/321>`_
+- WapiModule - Fix transform functions being skipped when a module parameter is ``None``; default values are now applied to the WAPI payload even when the corresponding parameter is not set. `#309 <https://github.com/infobloxopen/infoblox-ansible/pull/309>`_
+- WapiModule - ``vlans`` on network objects are now normalized to retain only the ``vlan`` reference key before comparison, removing NIOS-added ``id`` and ``name`` fields that caused false diffs. `#321 <https://github.com/infobloxopen/infoblox-ansible/pull/321>`_
+
 v1.9.0
 ======
 
