@@ -562,6 +562,11 @@ releases:
           the real failure reason
           (https://github.com/infobloxopen/infoblox-ansible/pull/321).
         - >-
+          WapiLookup.handle_exception - guard against a ``ConnectionError`` whose
+          ``.response`` is ``None`` (e.g. host unreachable), which previously
+          raised ``AttributeError`` and masked the real connection error
+          (https://github.com/infobloxopen/infoblox-ansible/pull/321).
+        - >-
           WapiModule - fix transform functions being skipped when a module
           parameter is ``None``; default values are now applied to the WAPI
           payload even when the corresponding parameter is not set

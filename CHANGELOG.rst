@@ -62,6 +62,7 @@ Bugfixes
 - nios_* modules - Fix post-fetch object retrieval on WAPI 2.14+ where create/update returns a ``{_ref, uuid}`` dict instead of a bare ``_ref`` string. `#345 <https://github.com/infobloxopen/infoblox-ansible/pull/345>`_
 - WapiModule - ``state=absent`` is now idempotent when the NIOS object is already missing; a ``NotFound`` response during delete is treated as ``changed=false`` rather than a failure. `#337 <https://github.com/infobloxopen/infoblox-ansible/pull/337>`_
 - WapiModule.handle_exception - Guard against WAPI error responses that omit the ``Error`` key, which previously raised ``KeyError`` and masked the real failure reason. `#321 <https://github.com/infobloxopen/infoblox-ansible/pull/321>`_
+- WapiLookup.handle_exception - Guard against a ``ConnectionError`` whose ``.response`` is ``None`` (e.g. host unreachable), which previously raised ``AttributeError`` and masked the real connection error. `#321 <https://github.com/infobloxopen/infoblox-ansible/pull/321>`_
 - WapiModule - Fix transform functions being skipped when a module parameter is ``None``; default values are now applied to the WAPI payload even when the corresponding parameter is not set. `#309 <https://github.com/infobloxopen/infoblox-ansible/pull/309>`_
 - WapiModule - ``vlans`` on network objects are now normalized to retain only the ``vlan`` reference key before comparison, removing NIOS-added ``id`` and ``name`` fields that caused false diffs. `#321 <https://github.com/infobloxopen/infoblox-ansible/pull/321>`_
 
